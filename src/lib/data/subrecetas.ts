@@ -12,31 +12,45 @@ export type SubrecetaFila = {
   costo_unitario: number;
   activo: boolean;
   insumo_id: string | null;
+  insumo_referencia: string | null;
+  insumo_coste: number | null;
 };
 
+/**
+ * Trae las subrecetas junto con el insumo "SUB." que las refleja (ver
+ * patrón maestro-calculadora en subrecetas/actions.ts), para poder mostrar
+ * su referencia y comparar su costo contra el costo_unitario recién
+ * calculado de la subreceta — así se detecta cuándo el insumo maestro
+ * quedó desactualizado (columna "Insumos vs subreceta" del listado).
+ */
 export async function listarSubrecetas(sedeId: string): Promise<SubrecetaFila[]> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("subrecetas")
     .select(
-      "id, nombre, rendimiento, unidad_rendimiento_codigo, merma_pct, desvio_pct, costo_total, costo_unitario, activo, insumo_id"
+      "id, nombre, rendimiento, unidad_rendimiento_codigo, merma_pct, desvio_pct, costo_total, costo_unitario, activo, insumo_id, insumos(referencia, coste)"
     )
     .eq("sede_id", sedeId)
     .order("nombre");
 
   if (error || !data) return [];
-  return data.map((s) => ({
-    id: s.id as string,
-    nombre: s.nombre as string,
-    rendimiento: s.rendimiento === null ? null : Number(s.rendimiento),
-    unidad_rendimiento_codigo: s.unidad_rendimiento_codigo as string | null,
-    merma_pct: Number(s.merma_pct),
-    desvio_pct: Number(s.desvio_pct),
-    costo_total: Number(s.costo_total),
-    costo_unitario: Number(s.costo_unitario),
-    activo: s.activo as boolean,
-    insumo_id: s.insumo_id as string | null,
-  }));
+  return data.map((s) => {
+    const insumo = s.insumos as unknown as { referencia: string | null; coste: number } | null;
+    return {
+      id: s.id as string,
+      nombre: s.nombre as string,
+      rendimiento: s.rendimiento === null ? null : Number(s.rendimiento),
+      unidad_rendimiento_codigo: s.unidad_rendimiento_codigo as string | null,
+      merma_pct: Number(s.merma_pct),
+      desvio_pct: Number(s.desvio_pct),
+      costo_total: Number(s.costo_total),
+      costo_unitario: Number(s.costo_unitario),
+      activo: s.activo as boolean,
+      insumo_id: s.insumo_id as string | null,
+      insumo_referencia: insumo?.referencia ?? null,
+      insumo_coste: insumo ? Number(insumo.coste) : null,
+    };
+  });
 }
 
 export async function obtenerSubreceta(id: string) {
