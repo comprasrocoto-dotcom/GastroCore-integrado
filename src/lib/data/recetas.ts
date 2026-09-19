@@ -5,6 +5,7 @@ import { agregarLineaIngrediente, recalcularReceta } from "./ingredientes";
 export type RecetaFila = {
   id: string;
   nombre: string;
+  familia_id: string | null;
   familia_nombre: string | null;
   rendimiento: number | null;
   unidad_rendimiento_codigo: string | null;
@@ -15,6 +16,7 @@ export type RecetaFila = {
   precio_real: number | null;
   iva: number;
   activo: boolean;
+  actualizado_en: string;
 };
 
 export async function listarRecetas(sedeId: string): Promise<RecetaFila[]> {
@@ -22,7 +24,7 @@ export async function listarRecetas(sedeId: string): Promise<RecetaFila[]> {
   const { data, error } = await supabase
     .from("recetas")
     .select(
-      "id, nombre, rendimiento, unidad_rendimiento_codigo, merma_pct, desvio_pct, costo_total, costo_porcion, precio_real, iva, activo, familias(nombre)"
+      "id, nombre, familia_id, rendimiento, unidad_rendimiento_codigo, merma_pct, desvio_pct, costo_total, costo_porcion, precio_real, iva, activo, actualizado_en, familias(nombre)"
     )
     .eq("sede_id", sedeId)
     .order("nombre");
@@ -31,6 +33,7 @@ export async function listarRecetas(sedeId: string): Promise<RecetaFila[]> {
   return data.map((r) => ({
     id: r.id as string,
     nombre: r.nombre as string,
+    familia_id: r.familia_id as string | null,
     familia_nombre: (r.familias as unknown as { nombre: string } | null)?.nombre ?? null,
     rendimiento: r.rendimiento === null ? null : Number(r.rendimiento),
     unidad_rendimiento_codigo: r.unidad_rendimiento_codigo as string | null,
@@ -41,6 +44,7 @@ export async function listarRecetas(sedeId: string): Promise<RecetaFila[]> {
     precio_real: r.precio_real === null ? null : Number(r.precio_real),
     iva: Number(r.iva),
     activo: r.activo as boolean,
+    actualizado_en: r.actualizado_en as string,
   }));
 }
 
