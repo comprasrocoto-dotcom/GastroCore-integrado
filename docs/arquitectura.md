@@ -418,3 +418,31 @@ esa vez, aunque en su momento pareció exitoso. Se corrigió subiendo la
 versión correcta y se ajustaron dos archivos más para que TypeScript no
 marcara error al compilar. El sitio ya quedó desplegado correctamente
 con los 13 archivos de esta etapa.
+
+## Agregar ingredientes en la misma fila + descargar PDF (20/09)
+
+Mariluz pidió dos cambios en las pantallas de detalle de receta y
+subreceta (`/recetas/[id]` y `/subrecetas/[id]`), mostrando capturas del
+sistema viejo como ejemplo.
+
+**Hecho en esta etapa:**
+
+- **Agregar ingredientes en la fila de la tabla:** antes, para agregar
+  un insumo o una subreceta como ingrediente había que usar dos
+  formularios aparte, más abajo en la pantalla ("Agregar insumo" /
+  "Agregar subreceta"). Ahora esos formularios se quitaron y en su lugar
+  la propia tabla de ingredientes tiene, al final, una fila lista para
+  cargar el siguiente ingrediente (elegir insumo o subreceta, cantidad,
+  unidad, % de merma) con un botón "+ Agregar" — todo dentro de la misma
+  tabla, como se veía en el ejemplo que mandó Mariluz.
+- **Botón "Descargar PDF":** junto al botón de "Subir foto", tanto en
+  recetas como en subrecetas, ahora hay un botón "⬇ Descargar PDF" que
+  genera y descarga un PDF con la información de la receta o subreceta:
+  datos generales, costos, tabla de ingredientes y (en recetas) el
+  resumen de precio y utilidad. El PDF usa exactamente los mismos números
+  que ya se ven en pantalla — no se inventó ni recalculó ninguna fórmula
+  nueva.
+
+Estos cambios no tocan cómo se calculan los costos ni los precios; solo
+cambian cómo se cargan los ingredientes y agregan una forma nueva de
+exportar la información a PDF.
