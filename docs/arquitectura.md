@@ -288,3 +288,42 @@ hacen falta.
 - Usuarios: https://supabase.com/dashboard/project/slbehczdonbzpneyglrx/auth/users
 - Repositorio de código: https://github.com/comprasrocoto-dotcom/GastroCore-integrado
 - Despliegue estable, conectado a GitHub (se actualiza solo con cada cambio en `main`): https://gastro-core-integrado-git-main-mariluzs-projects-a3ee4001.vercel.app
+
+## 9. Copiar la estructura real de GastroCore, módulo por módulo (19/09, en curso)
+
+Mariluz mandó 9 capturas del GastroCore real y fue clara: el ajuste de
+diseño anterior (colores, tipografía, modo oscuro) no alcanza — hay que
+copiar la **estructura** de cada pantalla (tarjetas, tablas, paneles), no
+solo el estilo. Esto es un trabajo más grande de lo que parecía al
+principio, porque varios módulos de GastroCore todavía no existen en
+Gastro Central (Panel Ejecutivo, Usuarios, Manual, Configuración) — hay
+que construirlos de cero, no solo reordenar lo que ya hay.
+
+**Hecho en esta etapa:**
+
+- La barra de navegación de arriba quedó en el mismo orden que GastroCore
+  (Insumos, Subrecetas, Recetas, Familias, Recetario).
+- La pantalla de **Recetas** ahora tiene las tarjetas de estadísticas
+  (total, costo promedio, food cost promedio, rentables, fuera de
+  objetivo, sin precio, actualizadas hoy), un panel lateral con las
+  familias y la tabla de recetas agrupada por familia con el semáforo de
+  food cost — igual que en GastroCore.
+- La pantalla de **Subrecetas** tiene sus tarjetas de estadísticas, el
+  buscador, "ver inactivas", y la tabla con la referencia del insumo
+  maestro y el chequeo de si quedó desactualizado frente al costo real de
+  la subreceta.
+
+**Encontrado en el camino — necesita tu confirmación:** en GastroCore
+real, cada receta se agrupa en dos niveles (ej. "Bar → Sodas", "Cocina →
+Ceviches"). En Gastro Central, las recetas solo se clasifican en un
+nivel (familia). Le pedí permiso a Mariluz por chat para agregar una
+columna nueva a la base (`subfamilia_id` en `recetas`, opcional, no borra
+ni cambia nada existente) para poder armar ese segundo nivel — el sistema
+de aprobaciones automáticas bloqueó el cambio por tratarse de producción,
+así que quedó pendiente de que ella lo confirme. Mientras tanto, el panel
+lateral de familias en Recetas ya funciona, pero agrupa solo por familia
+(un nivel), no por familia y subfamilia.
+
+**Todavía falta:** los formularios de Nueva receta / Nueva subreceta y la
+vista de detalle de una receta (reestructurar), y construir desde cero
+Panel Ejecutivo, Usuarios, Manual y Configuración.
