@@ -34,9 +34,10 @@ export default async function EditarSubrecetaPage({
     ? Math.max(...ingredientes.map((i) => i.orden)) + 1
     : 1;
 
+  const subrecetaId = subreceta.id;
   async function guardarFotoSubreceta(url: string) {
     "use server";
-    await actualizarFotoSubreceta(subreceta.id, url);
+    await actualizarFotoSubreceta(subrecetaId, url);
   }
 
   return (
