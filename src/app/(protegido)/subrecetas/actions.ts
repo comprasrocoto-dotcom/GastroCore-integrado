@@ -84,6 +84,20 @@ export async function crearSubrecetaCompleta(
   redirect(`/subrecetas/${resultado.id}?sede=${sedeId}`);
 }
 
+/**
+ * Guarda solo la foto de la subreceta en `subrecetas.foto_url` — la usa el
+ * botón "Subir foto" (SubidaFoto) en la vista de detalle.
+ */
+export async function actualizarFotoSubreceta(subrecetaId: string, url: string) {
+  if (!subrecetaId) return;
+
+  const supabase = createClient();
+  await supabase.from("subrecetas").update({ foto_url: url }).eq("id", subrecetaId);
+
+  revalidatePath(`/subrecetas/${subrecetaId}`);
+  revalidatePath("/recetario");
+}
+
 export async function actualizarSubreceta(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   const nombre = String(formData.get("nombre") ?? "").trim();
