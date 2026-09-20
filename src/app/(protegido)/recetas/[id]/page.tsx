@@ -168,6 +168,9 @@ export default async function RecetaDetallePage({
               style={{ borderColor: "var(--line)" }}
             >
               <p className="text-sm font-semibold">Ingredientes ({ingredientes.length})</p>
+              <a href="#agregar-ingrediente" className="btn-secondary px-3 py-1 text-xs">
+                + Agregar
+              </a>
             </div>
             <div className="erp-scroll">
               <table className="erp-table">
@@ -217,37 +220,37 @@ export default async function RecetaDetallePage({
           </section>
 
           {historial.length > 0 && (
-            <section>
-              <h2 className="mb-2 text-sm font-semibold text-slate-700">Historial de versiones</h2>
-              <div className="card overflow-hidden">
-                <div className="erp-scroll">
-                  <table className="erp-table">
-                    <thead>
-                      <tr>
-                        <th>Versión</th>
-                        <th>Fecha</th>
-                        <th>Acción</th>
-                        <th>Usuario</th>
-                        <th className="text-right">Costo porción</th>
+            <details className="card overflow-hidden">
+              <summary className="cursor-pointer select-none px-4 py-3 text-sm font-semibold text-slate-700">
+                Historial de versiones ({historial.length})
+              </summary>
+              <div className="erp-scroll border-t" style={{ borderColor: "var(--line)" }}>
+                <table className="erp-table">
+                  <thead>
+                    <tr>
+                      <th>Versión</th>
+                      <th>Fecha</th>
+                      <th>Acción</th>
+                      <th>Usuario</th>
+                      <th className="text-right">Costo porción</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {historial.map((h) => (
+                      <tr key={h.id}>
+                        <td>v{h.version}</td>
+                        <td>{new Date(h.fecha).toLocaleString("es-CO")}</td>
+                        <td>{h.accion ?? "—"}</td>
+                        <td>{h.usuario_nombre ?? "—"}</td>
+                        <td className="text-right fin-value">
+                          {Number(h.snapshot?.receta?.costo_porcion ?? 0).toFixed(2)}
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {historial.map((h) => (
-                        <tr key={h.id}>
-                          <td>v{h.version}</td>
-                          <td>{new Date(h.fecha).toLocaleString("es-CO")}</td>
-                          <td>{h.accion ?? "—"}</td>
-                          <td>{h.usuario_nombre ?? "—"}</td>
-                          <td className="text-right fin-value">
-                            {Number(h.snapshot?.receta?.costo_porcion ?? 0).toFixed(2)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-            </section>
+            </details>
           )}
         </div>
 
@@ -476,7 +479,7 @@ export default async function RecetaDetallePage({
           </button>
         </form>
 
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div id="agregar-ingrediente" className="grid gap-4 sm:grid-cols-2">
           <form action={agregarIngredienteReceta} className="card flex flex-col gap-2 p-3">
             <h3 className="text-sm font-semibold">Agregar insumo</h3>
             <input type="hidden" name="sede_id" value={receta.sede_id} />
