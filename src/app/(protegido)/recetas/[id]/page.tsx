@@ -77,9 +77,11 @@ export default async function RecetaDetallePage({
   const costoPorMerma = costoConMerma - costoBaseSinMerma;
   const desvioMonto = receta.costo_total - costoConMerma;
 
+  const recetaId = receta.id;
+  const recetaSedeId = receta.sede_id;
   async function guardarFotoReceta(url: string) {
     "use server";
-    await actualizarFotoReceta(receta.id, receta.sede_id, url);
+    await actualizarFotoReceta(recetaId, recetaSedeId, url);
   }
 
   return (
