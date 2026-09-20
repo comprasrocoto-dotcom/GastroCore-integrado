@@ -6,6 +6,7 @@ import {
   listarSubrecetasParaPicker,
 } from "@/lib/data/ingredientes";
 import SubidaFoto from "@/components/SubidaFoto";
+import FilaAgregarIngrediente from "@/components/FilaAgregarIngrediente";
 import {
   actualizarSubreceta,
   actualizarFotoSubreceta,
@@ -52,7 +53,7 @@ export default async function EditarSubrecetaPage({
             ? ` / ${subreceta.unidad_rendimiento_codigo}`
             : ""}
         </p>
-        <div className="mt-3">
+        <div className="mt-3 flex flex-wrap items-center gap-3">
           <SubidaFoto
             sedeId={subreceta.sede_id}
             tipo="subreceta"
@@ -60,6 +61,14 @@ export default async function EditarSubrecetaPage({
             fotoUrl={subreceta.foto_url}
             guardar={guardarFotoSubreceta}
           />
+          <a
+            href={`/subrecetas/${subreceta.id}/pdf`}
+            className="btn-secondary"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            ⬇ Descargar PDF
+          </a>
         </div>
       </div>
 
@@ -159,85 +168,20 @@ export default async function EditarSubrecetaPage({
                     </td>
                   </tr>
                 )}
+                <FilaAgregarIngrediente
+                  formId="agregar-ing-subreceta"
+                  variant="subreceta"
+                  insumos={insumos}
+                  subrecetas={subrecetas}
+                />
               </tbody>
             </table>
           </div>
         </div>
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <form action={agregarIngredienteSubreceta} className="card flex flex-col gap-2 p-3">
-          <h3 className="text-sm font-semibold">Agregar insumo</h3>
+        <form id="agregar-ing-subreceta" action={agregarIngredienteSubreceta}>
           <input type="hidden" name="sede_id" value={subreceta.sede_id} />
-          <input type="hidden" name="subreceta_id" value={subreceta.id} />
-          <input type="hidden" name="tipo_item" value="insumo" />
+          <input type="hidden" name="subreceta_id" value={subrecetaId} />
           <input type="hidden" name="orden" value={siguienteOrden} />
-          <select name="insumo_id" required className={inputClase}>
-            <option value="">— Elegir insumo —</option>
-            {insumos.map((i) => (
-              <option key={i.id} value={i.id}>
-                {i.etiqueta} ({i.coste.toFixed(2)}/{i.unidad_codigo ?? "?"})
-              </option>
-            ))}
-          </select>
-          <div className="flex gap-2">
-            <input
-              name="cantidad"
-              type="number"
-              step="0.01"
-              required
-              placeholder="Cantidad"
-              className={`w-28 ${inputClase}`}
-            />
-            <input name="unidad_codigo" placeholder="Unidad" className={`w-20 ${inputClase}`} />
-            <input
-              name="merma_pct"
-              type="number"
-              step="0.01"
-              placeholder="Merma %"
-              className={`w-24 ${inputClase}`}
-            />
-          </div>
-          <button type="submit" className="btn-secondary self-start">
-            Agregar
-          </button>
-        </form>
-
-        <form action={agregarIngredienteSubreceta} className="card flex flex-col gap-2 p-3">
-          <h3 className="text-sm font-semibold">Agregar otra subreceta</h3>
-          <input type="hidden" name="sede_id" value={subreceta.sede_id} />
-          <input type="hidden" name="subreceta_id" value={subreceta.id} />
-          <input type="hidden" name="tipo_item" value="subreceta" />
-          <input type="hidden" name="orden" value={siguienteOrden} />
-          <select name="subreceta_ref_id" required className={inputClase}>
-            <option value="">— Elegir subreceta —</option>
-            {subrecetas.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.etiqueta} ({s.costo_unitario.toFixed(4)})
-              </option>
-            ))}
-          </select>
-          <div className="flex gap-2">
-            <input
-              name="cantidad"
-              type="number"
-              step="0.01"
-              required
-              placeholder="Cantidad"
-              className={`w-28 ${inputClase}`}
-            />
-            <input name="unidad_codigo" placeholder="Unidad" className={`w-20 ${inputClase}`} />
-            <input
-              name="merma_pct"
-              type="number"
-              step="0.01"
-              placeholder="Merma %"
-              className={`w-24 ${inputClase}`}
-            />
-          </div>
-          <button type="submit" className="btn-secondary self-start">
-            Agregar
-          </button>
         </form>
       </div>
     </div>
