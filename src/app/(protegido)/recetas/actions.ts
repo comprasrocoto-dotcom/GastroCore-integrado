@@ -137,6 +137,24 @@ export async function eliminarIngredienteReceta(formData: FormData) {
   revalidatePath(`/recetas/${recetaId}`);
 }
 
+/**
+ * Guarda solo la foto de la receta en `fichas_tecnicas.foto_url` — la usa
+ * el botón "Subir foto" (SubidaFoto) en la vista de detalle, sin tocar el
+ * resto de la ficha técnica.
+ */
+export async function actualizarFotoReceta(recetaId: string, sedeId: string, url: string) {
+  if (!recetaId || !sedeId) return;
+
+  const supabase = createClient();
+  await supabase.from("fichas_tecnicas").upsert(
+    { receta_id: recetaId, sede_id: sedeId, foto_url: url },
+    { onConflict: "receta_id" }
+  );
+
+  revalidatePath(`/recetas/${recetaId}`);
+  revalidatePath("/recetario");
+}
+
 export async function guardarFicha(formData: FormData) {
   const recetaId = String(formData.get("receta_id") ?? "");
   if (!recetaId) return;
