@@ -5,8 +5,10 @@ import {
   listarInsumosParaPicker,
   listarSubrecetasParaPicker,
 } from "@/lib/data/ingredientes";
+import SubidaFoto from "@/components/SubidaFoto";
 import {
   actualizarSubreceta,
+  actualizarFotoSubreceta,
   agregarIngredienteSubreceta,
   eliminarIngredienteSubreceta,
 } from "../actions";
@@ -32,6 +34,11 @@ export default async function EditarSubrecetaPage({
     ? Math.max(...ingredientes.map((i) => i.orden)) + 1
     : 1;
 
+  async function guardarFotoSubreceta(url: string) {
+    "use server";
+    await actualizarFotoSubreceta(subreceta.id, url);
+  }
+
   return (
     <div className="flex flex-col gap-8">
       <div>
@@ -44,6 +51,15 @@ export default async function EditarSubrecetaPage({
             ? ` / ${subreceta.unidad_rendimiento_codigo}`
             : ""}
         </p>
+        <div className="mt-3">
+          <SubidaFoto
+            sedeId={subreceta.sede_id}
+            tipo="subreceta"
+            itemId={subreceta.id}
+            fotoUrl={subreceta.foto_url}
+            guardar={guardarFotoSubreceta}
+          />
+        </div>
       </div>
 
       <form action={actualizarSubreceta} className="card flex flex-wrap items-end gap-3 p-3">
