@@ -370,3 +370,51 @@ sobre esto sin su confirmación:**
    siempre? ¿se usa para algo del POS?). Para no inventar esa lógica, este
    campo todavía no se construyó — hace falta que Mariluz explique cómo
    funciona en el sistema actual.
+
+## Recetario rediseñado + subida de fotos (20/09)
+
+Mariluz pidió avanzar con el rediseño completo del Recetario (la pantalla
+que usa cocina, sin costos ni precios) y agregar la posibilidad de subir
+una foto a cada receta y subreceta.
+
+**Hecho en esta etapa:**
+
+- **Recetario** (`/recetario`) ahora es una sola pantalla con buscador,
+  un panel lateral (Todas / Sub. recetas / por categoría) y una grilla de
+  tarjetas — en vez de tener que entrar a cada receta por separado. Al
+  hacer clic en una tarjeta se abre el detalle (preparación, emplatado,
+  notas, ingredientes) en una ventana encima, sin perder el lugar en la
+  grilla.
+- El Recetario ahora incluye tanto **recetas** como **subrecetas** —
+  antes solo mostraba recetas.
+- **Subida de fotos:** en el detalle de una receta y de una subreceta
+  (pantallas `/recetas/[id]` y `/subrecetas/[id]`) ahora hay un botón
+  para subir una foto desde el celular o la computadora. La foto queda
+  guardada en Supabase Storage (bucket `fotos-recetas`, privado por sede:
+  cada sede solo puede subir o ver sus propias fotos) y se muestra tanto
+  en el detalle como en la tarjeta del Recetario.
+- Se corrigió una migración de base de datos que había quedado a medio
+  aplicar en el intento anterior (las vistas `recetario_publico*` que
+  alimentan esta pantalla).
+
+**Encontrado en el camino — necesita tu confirmación:**
+
+1. Igual que con la pantalla de Recetas, el Recetario también podría
+   agrupar por Centro de Costo (Bar / Cocina), como se ve en tu captura
+   de referencia. Pero esa información (`familias.centrocosto`) todavía
+   está vacía en la base de datos real — nadie la cargó todavía. Mientras
+   no esté cargada, el Recetario agrupa solo por familia (categoría), no
+   por Bar/Cocina.
+2. Las subrecetas no tienen "familia" en la base de datos (a diferencia
+   de las recetas), así que en el Recetario quedaron todas juntas bajo
+   "Sub. recetas", sin categoría. ¿Está bien así, o preferís que se
+   puedan categorizar de alguna otra forma?
+
+**Nota técnica (para que quede registrado):** al revisar por qué el
+despliegue en Vercel fallaba después de subir estos cambios, se encontró
+que uno de los archivos (`recetario.ts`) se había subido con contenido
+viejo en un intento anterior — el guardado en GitHub no se completó bien
+esa vez, aunque en su momento pareció exitoso. Se corrigió subiendo la
+versión correcta y se ajustaron dos archivos más para que TypeScript no
+marcara error al compilar. El sitio ya quedó desplegado correctamente
+con los 13 archivos de esta etapa.
