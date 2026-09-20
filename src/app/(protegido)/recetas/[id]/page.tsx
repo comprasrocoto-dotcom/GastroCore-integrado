@@ -10,6 +10,7 @@ import { calcularResumenCosteo, FC_OBJ } from "@/lib/costeo";
 import { obtenerFichaPorReceta } from "@/lib/data/fichas";
 import { listarHistorialReceta } from "@/lib/data/historial";
 import SubidaFoto from "@/components/SubidaFoto";
+import FilaAgregarIngrediente from "@/components/FilaAgregarIngrediente";
 import {
   actualizarReceta,
   actualizarFotoReceta,
@@ -113,7 +114,7 @@ export default async function RecetaDetallePage({
             ✎ Editar receta
           </a>
         </div>
-        <div className="mt-3">
+        <div className="mt-3 flex flex-wrap items-center gap-3">
           <SubidaFoto
             sedeId={receta.sede_id}
             tipo="receta"
@@ -121,6 +122,9 @@ export default async function RecetaDetallePage({
             fotoUrl={ficha?.foto_url ?? null}
             guardar={guardarFotoReceta}
           />
+          <a href={`/recetas/${receta.id}/pdf`} className="btn-secondary" target="_blank" rel="noopener noreferrer">
+            ⬇ Descargar PDF
+          </a>
         </div>
       </div>
 
@@ -186,9 +190,6 @@ export default async function RecetaDetallePage({
               style={{ borderColor: "var(--line)" }}
             >
               <p className="text-sm font-semibold">Ingredientes ({ingredientes.length})</p>
-              <a href="#agregar-ingrediente" className="btn-secondary px-3 py-1 text-xs">
-                + Agregar
-              </a>
             </div>
             <div className="erp-scroll">
               <table className="erp-table">
@@ -201,6 +202,7 @@ export default async function RecetaDetallePage({
                     <th className="text-right">Cant. real</th>
                     <th className="text-right">Costo unit.</th>
                     <th className="text-right">Costo total</th>
+                    <th></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -215,15 +217,30 @@ export default async function RecetaDetallePage({
                       </td>
                       <td className="text-right fin-value">{money(i.costo_unitario)}</td>
                       <td className="text-right fin-value">{money(i.costo_linea)}</td>
+                      <td className="text-right">
+                        <form action={eliminarIngredienteReceta}>
+                          <input type="hidden" name="id" value={i.id} />
+                          <input type="hidden" name="receta_id" value={recetaId} />
+                          <button type="submit" className="btn-danger px-2 py-1 text-xs">
+                            Quitar
+                          </button>
+                        </form>
+                      </td>
                     </tr>
                   ))}
                   {ingredientes.length === 0 && (
                     <tr>
-                      <td colSpan={7} className="px-4 py-6 text-center text-slate-400">
+                      <td colSpan={8} className="px-4 py-6 text-center text-slate-400">
                         Todavía no tiene ingredientes.
                       </td>
                     </tr>
                   )}
+                  <FilaAgregarIngrediente
+                    formId="agregar-ing-receta"
+                    variant="receta"
+                    insumos={insumos}
+                    subrecetas={subrecetas}
+                  />
                 </tbody>
                 <tfoot>
                   <tr>
@@ -231,10 +248,16 @@ export default async function RecetaDetallePage({
                       Costo de ingredientes
                     </td>
                     <td className="px-4 py-2 text-right fin-value font-semibold">{money(costoConMerma)}</td>
+                    <td></td>
                   </tr>
                 </tfoot>
               </table>
             </div>
+            <form id="agregar-ing-receta" action={agregarIngredienteReceta}>
+              <input type="hidden" name="sede_id" value={recetaSedeId} />
+              <input type="hidden" name="receta_id" value={recetaId} />
+              <input type="hidden" name="orden" value={siguienteOrden} />
+            </form>
           </section>
 
           {historial.length > 0 && (
@@ -496,118 +519,6 @@ export default async function RecetaDetallePage({
             Guardar
           </button>
         </form>
-
-        <div id="agregar-ingrediente" className="grid gap-4 sm:grid-cols-2">
-          <form action={agregarIngredienteReceta} className="card flex flex-col gap-2 p-3">
-            <h3 className="text-sm font-semibold">Agregar insumo</h3>
-            <input type="hidden" name="sede_id" value={receta.sede_id} />
-            <input type="hidden" name="receta_id" value={receta.id} />
-            <input type="hidden" name="tipo_item" value="insumo" />
-            <input type="hidden" name="orden" value={siguienteOrden} />
-            <select name="insumo_id" required className={inputClase}>
-              <option value="">— Elegir insumo —</option>
-              {insumos.map((i) => (
-                <option key={i.id} value={i.id}>
-                  {i.etiqueta} ({i.coste.toFixed(2)}/{i.unidad_codigo ?? "?"})
-                </option>
-              ))}
-            </select>
-            <div className="flex gap-2">
-              <input
-                name="cantidad"
-                type="number"
-                step="0.01"
-                required
-                placeholder="Cantidad"
-                className={`w-28 ${inputClase}`}
-              />
-              <input name="unidad_codigo" placeholder="Unidad" className={`w-20 ${inputClase}`} />
-              <input
-                name="merma_pct"
-                type="number"
-                step="0.01"
-                placeholder="Merma %"
-                className={`w-24 ${inputClase}`}
-              />
-            </div>
-            <button type="submit" className="btn-secondary self-start">
-              Agregar
-            </button>
-          </form>
-
-          <form action={agregarIngredienteReceta} className="card flex flex-col gap-2 p-3">
-            <h3 className="text-sm font-semibold">Agregar subreceta</h3>
-            <input type="hidden" name="sede_id" value={receta.sede_id} />
-            <input type="hidden" name="receta_id" value={receta.id} />
-            <input type="hidden" name="tipo_item" value="subreceta" />
-            <input type="hidden" name="orden" value={siguienteOrden} />
-            <select name="subreceta_ref_id" required className={inputClase}>
-              <option value="">— Elegir subreceta —</option>
-              {subrecetas.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.etiqueta} ({s.costo_unitario.toFixed(4)})
-                </option>
-              ))}
-            </select>
-            <div className="flex gap-2">
-              <input
-                name="cantidad"
-                type="number"
-                step="0.01"
-                required
-                placeholder="Cantidad"
-                className={`w-28 ${inputClase}`}
-              />
-              <input name="unidad_codigo" placeholder="Unidad" className={`w-20 ${inputClase}`} />
-              <input
-                name="merma_pct"
-                type="number"
-                step="0.01"
-                placeholder="Merma %"
-                className={`w-24 ${inputClase}`}
-              />
-            </div>
-            <button type="submit" className="btn-secondary self-start">
-              Agregar
-            </button>
-          </form>
-        </div>
-
-        {ingredientes.length > 0 && (
-          <div className="card overflow-hidden">
-            <div className="flex items-center justify-between border-b px-4 py-2" style={{ borderColor: "var(--line)" }}>
-              <p className="text-sm font-semibold">Quitar ingredientes</p>
-            </div>
-            <div className="erp-scroll">
-              <table className="erp-table">
-                <thead>
-                  <tr>
-                    <th>Ítem</th>
-                    <th className="text-right">Cantidad</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {ingredientes.map((i) => (
-                    <tr key={i.id}>
-                      <td>{i.descripcion}</td>
-                      <td className="text-right">{i.cantidad}</td>
-                      <td className="text-right">
-                        <form action={eliminarIngredienteReceta}>
-                          <input type="hidden" name="id" value={i.id} />
-                          <input type="hidden" name="receta_id" value={receta.id} />
-                          <button type="submit" className="btn-danger px-2 py-1 text-xs">
-                            Quitar
-                          </button>
-                        </form>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
       </section>
     </div>
   );
