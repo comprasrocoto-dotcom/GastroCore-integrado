@@ -8,56 +8,80 @@ import {
   eliminarLineaIngrediente,
   recalcularSubreceta,
 } from "@/lib/data/ingredientes";
+import { crearSubrecetaConIngredientes } from "@/lib/data/subrecetas";
 
 export type EstadoSubreceta = { error: string | null };
 
-export async function crearSubreceta(
+/**
+ * Crea la subreceta, resuelve su insumo maestro (vincula uno "SUB." sin
+ * usar o crea uno nuevo) y guarda todos sus ingredientes en un solo paso —
+ * la usa el armador de "Nueva subreceta" (SubrecetaForm), que arma la
+ * lista de ingredientes en el navegador y solo al final manda todo junto,
+ * igual que GastroCore.
+ */
+export async function crearSubrecetaCompleta(
   _estadoPrevio: EstadoSubreceta,
   formData: FormData
 ): Promise<EstadoSubreceta> {
   const sedeId = String(formData.get("sede_id") ?? "");
   const nombre = String(formData.get("nombre") ?? "").trim();
-  const rendimiento = Number(formData.get("rendimiento") ?? 0) || null;
-  const unidad = String(formData.get("unidad_rendimiento_codigo") ?? "") || null;
-
   if (!sedeId || !nombre) {
     return { error: "Falta el nombre de la subreceta." };
   }
 
-  const supabase = createClient();
-
-  // Patrón maestro-calculadora: toda subreceta vive también como un
-  // insumo normal (prefijo SUB.) para poder usarse dentro de otras
-  // recetas — este insumo es su "reflejo", su costo se actualiza solo
-  // cada vez que se recalcula la subreceta.
-  const { data: insumo, error: errorInsumo } = await supabase
-    .from("insumos")
-    .insert({ sede_id: sedeId, articulo: `SUB.${nombre.toUpperCase()}`, coste: 0 })
-    .select("id")
-    .single();
-
-  if (errorInsumo || !insumo) {
-    return { error: `No se pudo crear el insumo maestro: ${errorInsumo?.message}` };
+  const modo = String(formData.get("modo") ?? "crear") === "vincular" ? "vincular" : "crear";
+  const insumoVinculadoId = String(formData.get("insumo_vinculado_id") ?? "");
+  if (modo === "vincular" && !insumoVinculadoId) {
+    return { error: 'Elegí el insumo "SUB." a vincular, o completá los datos para crear uno nuevo.' };
   }
 
-  const { data: subreceta, error: errorSub } = await supabase
-    .from("subrecetas")
-    .insert({
-      sede_id: sedeId,
-      insumo_id: insumo.id,
-      nombre,
-      rendimiento,
-      unidad_rendimiento_codigo: unidad,
-    })
-    .select("id")
-    .single();
+  let lineas: {
+    tipoItem: "insumo" | "subreceta";
+    itemId: string;
+    cantidad: number;
+    unidadCodigo: string | null;
+    mermaPct: number;
+  }[] = [];
+  try {
+    const crudo = JSON.parse(String(formData.get("ingredientes_json") ?? "[]"));
+    if (Array.isArray(crudo)) {
+      lineas = crudo
+        .filter((l) => l && l.itemId && Number(l.cantidad) > 0)
+        .map((l) => ({
+          tipoItem: l.tipoItem === "subreceta" ? "subreceta" : "insumo",
+          itemId: String(l.itemId),
+          cantidad: Number(l.cantidad),
+          unidadCodigo: l.unidadCodigo ? String(l.unidadCodigo) : null,
+          mermaPct: Number(l.mermaPct) || 0,
+        }));
+    }
+  } catch {
+    return { error: "No se pudo leer la lista de ingredientes." };
+  }
 
-  if (errorSub || !subreceta) {
-    return { error: `No se pudo crear la subreceta: ${errorSub?.message}` };
+  const resultado = await crearSubrecetaConIngredientes({
+    sedeId,
+    nombre,
+    rendimiento: Number(formData.get("rendimiento") ?? 0) || null,
+    unidadRendimientoCodigo: String(formData.get("unidad_rendimiento_codigo") ?? "") || null,
+    desvioPct: Number(formData.get("desvio_pct") ?? 0) / 100,
+    maestro:
+      modo === "vincular"
+        ? { modo: "vincular", insumoId: insumoVinculadoId }
+        : {
+            modo: "crear",
+            referencia: String(formData.get("referencia") ?? "").trim() || null,
+            subfamiliaId: String(formData.get("subfamilia_id") ?? "") || null,
+          },
+    lineas,
+  });
+
+  if ("error" in resultado) {
+    return { error: resultado.error };
   }
 
   revalidatePath("/subrecetas");
-  redirect(`/subrecetas/${subreceta.id}?sede=${sedeId}`);
+  redirect(`/subrecetas/${resultado.id}?sede=${sedeId}`);
 }
 
 export async function actualizarSubreceta(formData: FormData) {
