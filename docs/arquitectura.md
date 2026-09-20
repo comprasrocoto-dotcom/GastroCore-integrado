@@ -324,6 +324,49 @@ así que quedó pendiente de que ella lo confirme. Mientras tanto, el panel
 lateral de familias en Recetas ya funciona, pero agrupa solo por familia
 (un nivel), no por familia y subfamilia.
 
-**Todavía falta:** los formularios de Nueva receta / Nueva subreceta y la
-vista de detalle de una receta (reestructurar), y construir desde cero
-Panel Ejecutivo, Usuarios, Manual y Configuración.
+**Todavía falta:** construir desde cero Panel Ejecutivo, Usuarios, Manual y
+Configuración.
+
+**Actualización (20/09):** se revisaron las 9 capturas una por una y se
+confirmó que "Nueva receta" (`recetas/nueva`) ya tenía la estructura
+correcta desde la etapa anterior. Se rehicieron las dos pantallas que
+faltaban:
+
+- **"Nueva subreceta"** (`subrecetas/nueva`): ahora tiene el mismo patrón
+  "maestro-calculadora" que ya usa el resto del sistema — un panel para
+  vincular la subreceta a un insumo `SUB.…` que ya exista sin vincular
+  todavía, o crear uno nuevo (con referencia sugerida automática, tipo
+  `SUB001`, `SUB002`...), y abajo la tabla de ingredientes con buscador y
+  el resumen de costeo tipo "ticket", igual que en GastroCore.
+- **Vista de detalle de una receta** (al abrir una receta desde el
+  Recetario): antes era solo un formulario de edición; ahora es un panel
+  de solo lectura con las tarjetas de costo/precio/utilidad arriba, los
+  datos generales (familia, rendimiento, fechas), la tabla de
+  ingredientes, el historial de versiones y el resumen de costos al
+  costado — como en la captura de "PISCO PUNCHS" que mandó Mariluz. La
+  edición avanzada (cambiar datos, agregar/quitar ingredientes, ficha
+  técnica) se mantuvo, más abajo en la misma página, para no perder
+  ninguna función que ya existía.
+
+Los 6 cambios de esta etapa ya están en GitHub (rama `main`) y Vercel los
+desplegó automáticamente a producción.
+
+**Dos preguntas para Mariluz, todavía sin responder — no se avanzó nada
+sobre esto sin su confirmación:**
+
+1. La migración pendiente para agregar `subfamilia_id` a `recetas` (para
+   poder agrupar en dos niveles, como "Bar → Sodas", igual que el panel de
+   familias de la captura del Recetario real). El sistema de aprobaciones
+   la sigue bloqueando por tratarse de producción — sigue esperando que
+   Mariluz la apruebe.
+2. **Nueva pregunta:** en la captura de "Nueva receta", el campo
+   "Referencia ERP (interna)" trae un texto de ayuda que dice "elige la
+   familia y se sugiere...", como si el sistema propusiera un código
+   automáticamente según la familia elegida. Pero en la captura de detalle
+   de una receta ya creada (PISCO PUNCHS), ese mismo campo aparece vacío
+   ("–") aunque la receta sí tiene familia. No quedó claro, solo mirando
+   las capturas, cuál es la regla exacta para sugerir ese código (¿es un
+   número que sigue una secuencia por familia? ¿se puede dejar vacío
+   siempre? ¿se usa para algo del POS?). Para no inventar esa lógica, este
+   campo todavía no se construyó — hace falta que Mariluz explique cómo
+   funciona en el sistema actual.
