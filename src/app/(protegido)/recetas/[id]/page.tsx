@@ -9,8 +9,10 @@ import {
 import { calcularResumenCosteo, FC_OBJ } from "@/lib/costeo";
 import { obtenerFichaPorReceta } from "@/lib/data/fichas";
 import { listarHistorialReceta } from "@/lib/data/historial";
+import SubidaFoto from "@/components/SubidaFoto";
 import {
   actualizarReceta,
+  actualizarFotoReceta,
   agregarIngredienteReceta,
   eliminarIngredienteReceta,
   guardarFicha,
@@ -75,6 +77,11 @@ export default async function RecetaDetallePage({
   const costoPorMerma = costoConMerma - costoBaseSinMerma;
   const desvioMonto = receta.costo_total - costoConMerma;
 
+  async function guardarFotoReceta(url: string) {
+    "use server";
+    await actualizarFotoReceta(receta.id, receta.sede_id, url);
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -103,6 +110,15 @@ export default async function RecetaDetallePage({
           <a href="#editar" className="btn-primary">
             ✎ Editar receta
           </a>
+        </div>
+        <div className="mt-3">
+          <SubidaFoto
+            sedeId={receta.sede_id}
+            tipo="receta"
+            itemId={receta.id}
+            fotoUrl={ficha?.foto_url ?? null}
+            guardar={guardarFotoReceta}
+          />
         </div>
       </div>
 
