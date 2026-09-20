@@ -15,6 +15,7 @@ export type SubrecetaFila = {
   insumo_id: string | null;
   insumo_referencia: string | null;
   insumo_coste: number | null;
+  foto_url: string | null;
 };
 
 /**
@@ -29,7 +30,7 @@ export async function listarSubrecetas(sedeId: string): Promise<SubrecetaFila[]>
   const { data, error } = await supabase
     .from("subrecetas")
     .select(
-      "id, nombre, rendimiento, unidad_rendimiento_codigo, merma_pct, desvio_pct, costo_total, costo_unitario, activo, insumo_id, insumos(referencia, coste)"
+      "id, nombre, rendimiento, unidad_rendimiento_codigo, merma_pct, desvio_pct, costo_total, costo_unitario, activo, insumo_id, foto_url, insumos(referencia, coste)"
     )
     .eq("sede_id", sedeId)
     .order("nombre");
@@ -50,6 +51,7 @@ export async function listarSubrecetas(sedeId: string): Promise<SubrecetaFila[]>
       insumo_id: s.insumo_id as string | null,
       insumo_referencia: insumo?.referencia ?? null,
       insumo_coste: insumo ? Number(insumo.coste) : null,
+      foto_url: s.foto_url as string | null,
     };
   });
 }
@@ -226,7 +228,7 @@ export async function obtenerSubreceta(id: string) {
   const { data, error } = await supabase
     .from("subrecetas")
     .select(
-      "id, sede_id, nombre, rendimiento, unidad_rendimiento_codigo, merma_pct, desvio_pct, costo_total, costo_unitario, activo, insumo_id"
+      "id, sede_id, nombre, rendimiento, unidad_rendimiento_codigo, merma_pct, desvio_pct, costo_total, costo_unitario, activo, insumo_id, foto_url"
     )
     .eq("id", id)
     .single();
