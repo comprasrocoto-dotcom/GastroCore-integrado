@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { obtenerReceta } from "@/lib/data/recetas";
 import { listarIngredientesDeReceta } from "@/lib/data/ingredientes";
-import { calcularResumenCosteo, FC_OBJ } from "@/lib/costeo";
+import { calcularResumenCosteo } from "@/lib/costeo";
+import { obtenerConfiguracionCosteo } from "@/lib/data/configuracion";
 import { generarPdfReceta } from "@/lib/pdf/receta";
 
 /**
@@ -17,10 +18,16 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
     return NextResponse.json({ error: "Receta no encontrada." }, { status: 404 });
   }
 
-  const ingredientes = await listarIngredientesDeReceta(receta.id);
+  const [ingredientes, config] = await Promise.all([
+    listarIngredientesDeReceta(receta.id),
+    obtenerConfiguracionCosteo(receta.sede_id),
+  ]);
 
   const resumen = receta.precio_real
-    ? calcularResumenCosteo(receta.costo_porcion, receta.precio_real)
+    ? calcularResumenCosteo(receta.costo_porcion, receta.precio_real, {
+        fcObjetivo: config.fcObjetivo,
+        iva: receta.iva,
+      })
     : null;
 
   const costoBaseSinMerma = ingredientes.reduce((s, i) => s + i.costo_unitario * i.cantidad, 0);
@@ -35,7 +42,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
     costoBaseSinMerma,
     costoPorMerma,
     desvioMonto,
-    foodCostObjetivo: FC_OBJ,
+    foodCostObjetivo: config.fcObjetivo,
   });
 
   const nombreArchivo = `receta-${receta.nombre.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.pdf`;
