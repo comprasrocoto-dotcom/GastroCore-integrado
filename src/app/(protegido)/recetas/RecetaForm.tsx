@@ -4,7 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import { useFormState, useFormStatus } from "react-dom";
 import Link from "next/link";
 import { crearRecetaCompleta, type EstadoReceta } from "./actions";
-import { calcularResumenCosteo, precioSugerido, FC_OBJ } from "@/lib/costeo";
+import { calcularResumenCosteo, precioSugerido } from "@/lib/costeo";
 import { CampoNumero } from "@/components/CampoNumero";
 import SearchableSelect from "@/components/SearchableSelect";
 import InsumoAutocomplete, { type ItemOpt } from "@/components/InsumoAutocomplete";
@@ -15,6 +15,15 @@ type Linea = {
   unidad: string;
   cantidad: number;
   mermaPct: number; // porcentaje (0-100), como en la UI
+};
+
+/** Igual forma que `ConfiguracionCosteo` de lib/data/configuracion.ts —
+ * definido acá aparte (sin importar ese módulo, que es server-only) porque
+ * este es un componente de cliente. */
+type ConfigCosteo = {
+  fcObjetivo: number;
+  fcObjetivoPanel: number;
+  iva: number;
 };
 
 const money = (n: number) =>
@@ -36,11 +45,13 @@ export default function RecetaForm({
   familias,
   items,
   unidades,
+  configCosteo,
 }: {
   sedeId: string;
   familias: { id: string; nombre: string }[];
   items: ItemOpt[];
   unidades: { codigo: string; nombre: string }[];
+  configCosteo: ConfigCosteo;
 }) {
   const [estado, formAction] = useFormState<EstadoReceta, FormData>(crearRecetaCompleta, {
     error: null,
@@ -78,10 +89,11 @@ export default function RecetaForm({
     const desvio = costoIngredientes * (desvioPct / 100);
     const costoFinal = costoIngredientes + desvio;
     const costoPorcion = costoFinal / (rendimiento || 1);
-    const sugerido = precioSugerido(costoPorcion);
-    const resumen = precioReal > 0 ? calcularResumenCosteo(costoPorcion, precioReal) : null;
+    const sugerido = precioSugerido(costoPorcion, configCosteo.fcObjetivo, configCosteo.iva);
+    const resumen =
+      precioReal > 0 ? calcularResumenCosteo(costoPorcion, precioReal, configCosteo) : null;
     return { costoIngredientes, desvio, costoFinal, costoPorcion, sugerido, resumen };
-  }, [filas, desvioPct, rendimiento, precioReal]);
+  }, [filas, desvioPct, rendimiento, precioReal, configCosteo]);
 
   const addLinea = () =>
     setLineas((p) => [...p, { itemId: "", tipoItem: "insumo", unidad: "", cantidad: 1, mermaPct: 0 }]);
@@ -336,7 +348,7 @@ export default function RecetaForm({
             </div>
             <div className="ticket-row">
               <span>Food cost objetivo</span>
-              <span>{pct(FC_OBJ * 100)}</span>
+              <span>{pct(configCosteo.fcObjetivo * 100)}</span>
             </div>
             <div className="my-1 border-t border-dashed" style={{ borderColor: "var(--line)" }} />
             <div className="ticket-row font-semibold text-[#1E3A5F]">
