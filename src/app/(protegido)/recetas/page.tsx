@@ -3,7 +3,8 @@ import { getUsuarioActual } from "@/lib/auth/usuario-actual";
 import { getSedesVisibles, resolverSedeActiva } from "@/lib/data/sedes";
 import { listarRecetas } from "@/lib/data/recetas";
 import { listarFamiliasConSubfamilias } from "@/lib/data/familias";
-import { calcularResumenCosteo } from "@/lib/costeo";
+import { calcularResumenCosteo, type OpcionesCosteo } from "@/lib/costeo";
+import { obtenerConfiguracionCosteo } from "@/lib/data/configuracion";
 
 const COLOR_SEMAFORO: Record<string, string> = {
   verde: "bg-semaforo-verde",
@@ -31,9 +32,10 @@ export default async function RecetasPage({
   const sedeActiva = resolverSedeActiva(usuario, sedesVisibles, searchParams.sede);
   if (!sedeActiva) return <p style={{ color: "var(--muted)" }}>No hay ninguna sede disponible.</p>;
 
-  const [todas, familias] = await Promise.all([
+  const [todas, familias, config] = await Promise.all([
     listarRecetas(sedeActiva.id),
     listarFamiliasConSubfamilias(sedeActiva.id),
+    obtenerConfiguracionCosteo(sedeActiva.id),
   ]);
 
   const q = (searchParams.q ?? "").trim().toLowerCase();
@@ -45,7 +47,12 @@ export default async function RecetasPage({
 
   const conResumen = todas
     .filter((r) => r.precio_real)
-    .map((r) => calcularResumenCosteo(r.costo_porcion, r.precio_real as number));
+    .map((r) =>
+      calcularResumenCosteo(r.costo_porcion, r.precio_real as number, {
+        fcObjetivo: config.fcObjetivo,
+        iva: r.iva,
+      })
+    );
 
   const hoyIso = new Date().toISOString().slice(0, 10);
 
@@ -211,7 +218,7 @@ export default async function RecetasPage({
                 <p className="text-sm font-semibold">{grupo.nombre}</p>
                 <span className="text-xs text-slate-400">{grupo.recetas.length} recetas</span>
               </div>
-              <TablaRecetas sedeId={sedeActiva.id} recetas={grupo.recetas} />
+              <TablaRecetas sedeId={sedeActiva.id} recetas={grupo.recetas} config={config} />
             </div>
           ))}
 
@@ -221,7 +228,7 @@ export default async function RecetasPage({
                 <p className="text-sm font-semibold">Sin familia</p>
                 <span className="text-xs text-slate-400">{sinFamilia.length} recetas</span>
               </div>
-              <TablaRecetas sedeId={sedeActiva.id} recetas={sinFamilia} />
+              <TablaRecetas sedeId={sedeActiva.id} recetas={sinFamilia} config={config} />
             </div>
           )}
 
@@ -237,9 +244,11 @@ export default async function RecetasPage({
 function TablaRecetas({
   sedeId,
   recetas,
+  config,
 }: {
   sedeId: string;
   recetas: Awaited<ReturnType<typeof listarRecetas>>;
+  config: OpcionesCosteo;
 }) {
   return (
     <div className="erp-scroll">
@@ -256,7 +265,10 @@ function TablaRecetas({
         <tbody>
           {recetas.map((r) => {
             const resumen = r.precio_real
-              ? calcularResumenCosteo(r.costo_porcion, r.precio_real)
+              ? calcularResumenCosteo(r.costo_porcion, r.precio_real, {
+                  fcObjetivo: config.fcObjetivo,
+                  iva: r.iva,
+                })
               : null;
             return (
               <tr key={r.id}>
