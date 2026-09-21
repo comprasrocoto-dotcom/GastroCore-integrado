@@ -4,6 +4,7 @@ import { getSedesVisibles, resolverSedeActiva } from "@/lib/data/sedes";
 import { listarFamiliasParaPicker } from "@/lib/data/recetas";
 import { listarInsumosParaPicker, listarSubrecetasParaPicker } from "@/lib/data/ingredientes";
 import { listarUnidades } from "@/lib/data/insumos";
+import { obtenerConfiguracionCosteo } from "@/lib/data/configuracion";
 import type { ItemOpt } from "@/components/InsumoAutocomplete";
 import RecetaForm from "../RecetaForm";
 
@@ -19,11 +20,12 @@ export default async function NuevaRecetaPage({
   const sedeActiva = resolverSedeActiva(usuario, sedesVisibles, searchParams.sede);
   if (!sedeActiva) return <p style={{ color: "var(--muted)" }}>No hay ninguna sede disponible.</p>;
 
-  const [familias, insumos, subrecetas, unidades] = await Promise.all([
+  const [familias, insumos, subrecetas, unidades, configCosteo] = await Promise.all([
     listarFamiliasParaPicker(sedeActiva.id),
     listarInsumosParaPicker(sedeActiva.id),
     listarSubrecetasParaPicker(sedeActiva.id),
     listarUnidades(),
+    obtenerConfiguracionCosteo(sedeActiva.id),
   ]);
 
   // Un solo listado para el buscador de ingredientes: insumos + subrecetas,
@@ -65,7 +67,13 @@ export default async function NuevaRecetaPage({
           Volver
         </Link>
       </div>
-      <RecetaForm sedeId={sedeActiva.id} familias={familias} items={items} unidades={unidades} />
+      <RecetaForm
+        sedeId={sedeActiva.id}
+        familias={familias}
+        items={items}
+        unidades={unidades}
+        configCosteo={configCosteo}
+      />
     </div>
   );
 }
