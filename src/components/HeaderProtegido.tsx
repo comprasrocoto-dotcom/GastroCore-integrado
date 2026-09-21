@@ -20,9 +20,10 @@ import { logout } from "@/app/login/actions";
 /**
  * Orden y módulos calcados del GastroCore real (ver capturas de
  * referencia de Mariluz, 19/09): Insumos, Subrecetas, Recetas, Familias,
- * Panel, Análisis, Usuarios, Manual, Configuración. Los últimos cinco
- * todavía no existen como pantallas en Gastro Central — se agregan acá
- * recién cuando cada uno esté construido, para no dejar links rotos.
+ * Panel, Análisis, Usuarios, Manual, Configuración. Configuración ya se
+ * construyó (21/09) y se agregó acá; Panel, Análisis, Usuarios y Manual
+ * todavía no existen como pantallas en Gastro Central — se agregan recién
+ * cuando cada uno esté construido, para no dejar links rotos.
  * "Recetario" (solo preparación/emplatado, sin costos) es una pantalla
  * propia de Gastro Central que no existe en el GastroCore real — se deja
  * al final, después de los módulos que sí tienen equivalente.
@@ -32,6 +33,7 @@ const NAV = [
   { href: "/subrecetas", label: "Subrecetas", icon: "🥣" },
   { href: "/recetas", label: "Recetas", icon: "📘" },
   { href: "/familias", label: "Familias", icon: "🗂️" },
+  { href: "/configuracion", label: "Configuración", icon: "⚙️" },
   { href: "/recetario", label: "Recetario", icon: "📖" },
 ];
 
