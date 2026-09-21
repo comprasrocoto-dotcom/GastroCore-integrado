@@ -446,3 +446,81 @@ sistema viejo como ejemplo.
 Estos cambios no tocan cómo se calculan los costos ni los precios; solo
 cambian cómo se cargan los ingredientes y agregan una forma nueva de
 exportar la información a PDF.
+
+## Auditoría, mapeo y plan contra el GastroCore viejo + pantalla de Configuración (21/09)
+
+Mariluz pidió una tarea mucho más grande: revisar a fondo qué hacía el
+GastroCore viejo (el de Google Sheets) y compararlo con Gastro Central,
+antes de seguir agregando funciones — siguiendo un orden estricto que
+ella misma marcó: primero auditar, después comparar, después planear, y
+recién al final programar. También dejó una regla principal muy clara:
+**no rediseñar nada de lo que ya existe** — la idea es recuperar la
+lógica y las funciones del GastroCore viejo, pero manteniendo tal cual
+está el diseño actual de Gastro Central (colores, botones, menú, tablas,
+todo).
+
+**Lo que se hizo en esta etapa (auditoría + mapeo + plan):**
+
+- Se revisó todo el código y la base de datos actuales de Gastro
+  Central: las 14 tablas, sus relaciones, los cálculos de costeo, y
+  todas las pantallas ya construidas.
+- Se investigó cómo funciona realmente el GastroCore viejo. Resultado
+  importante: el GastroCore viejo **no usa una base de datos como la
+  nuestra** — usa una planilla de Google Sheets ("Base de Costos") como
+  única fuente de datos, y un programa intermedio (Apps Script) que lee
+  y escribe en esa planilla. Eso explica varias diferencias de
+  comportamiento entre los dos sistemas.
+- Se encontró algo que Mariluz no había mencionado y que le avisamos por
+  chat: dentro del repositorio del GastroCore viejo hay un intento
+  paralelo, sin terminar, de migrarlo a una base de datos — separado de
+  Gastro Central y con errores conocidos sin resolver. No se tocó nada
+  de eso; solo se dejó constancia para que Mariluz confirme si lo sabía
+  y si Gastro Central sigue siendo el camino oficial.
+- Con toda esa información se armó una tabla comparando función por
+  función qué existe en cada sistema, y un plan ordenado de qué falta
+  construir, qué se puede reutilizar tal cual y qué necesita una
+  decisión de Mariluz antes de programarse (quedaron 6 preguntas
+  pendientes, todavía sin responder, sobre: la migración de subfamilia
+  en recetas, cómo se numera la "Referencia ERP", cómo funciona la
+  conversión de unidades del sistema viejo, qué significan los
+  indicadores del futuro Panel Ejecutivo, si Mariluz conocía el intento
+  de migración paralelo, y si ella va a cargar el dato de Centro de
+  Costo por familia).
+
+**Lo único que se construyó en esta etapa (lo único que no dependía de
+ninguna decisión pendiente): la pantalla de Configuración.**
+
+- El food cost objetivo (35%), el food cost objetivo para un futuro
+  Panel Ejecutivo (30%) y el IVA/INC (8%) eran, hasta ahora, números
+  fijos escritos directamente en el código. En el GastroCore viejo esto
+  se podía ajustar; en Gastro Central no había forma de cambiarlos sin
+  modificar el código.
+- Ahora hay una pantalla nueva, **Configuración** (aparece en el menú de
+  arriba, con el mismo estilo que el resto de las pantallas — no se
+  cambió ningún color, tipografía ni botón existente), donde se pueden
+  editar esos tres valores por sede. Se guardan en una tabla que ya
+  existía en la base de datos (`configuracion`) pero que todavía no se
+  usaba para nada.
+- Las pantallas de Recetas (listado, detalle, formulario de nueva
+  receta y el PDF) ahora leen ese valor configurado en lugar del número
+  fijo. Si una sede no configuró nada todavía, se sigue usando
+  exactamente el mismo valor de siempre (35% / 30% / 8%) — no cambia el
+  comportamiento de ninguna receta existente hasta que alguien entre a
+  Configuración y lo modifique a propósito.
+- De paso se corrigió un detalle técnico: cada receta ya tenía su propio
+  campo de IVA editable ("Edición avanzada"), pero ese valor nunca se
+  usaba realmente en el cálculo del food cost — el cálculo siempre usaba
+  el 8% fijo. Ahora si una receta tiene su propio IVA cargado, se
+  respeta ese valor.
+
+Esto no cambia ninguna fórmula de costeo, ni el diseño de ninguna
+pantalla existente: solo hace configurable un número que antes estaba
+fijo en el código, y corrige que el IVA propio de la receta se tuviera
+en cuenta.
+
+**Sigue pendiente, esperando respuesta de Mariluz a las 6 preguntas del
+mapeo, antes de seguir programando** (para no inventar ninguna decisión
+de negocio): el panel de Usuarios, la migración de subfamilia en
+recetas, el sistema real de conversión de unidades de medida, la
+numeración de Referencia ERP, el Panel Ejecutivo, la pantalla de
+Análisis, el manual, y la trazabilidad campo por campo.
