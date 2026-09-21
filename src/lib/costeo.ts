@@ -29,26 +29,42 @@ export const SEMAFORO_AMARILLO_MAX = 0.35;
 
 export type Semaforo = "verde" | "amarillo" | "rojo";
 
-/** Precio real sin el impuesto al consumo incluido. */
-export function precioBaseSinImpuesto(precioReal: number): number {
-  return precioReal / (1 + INC);
+/**
+ * Precio real sin el impuesto al consumo incluido. `iva` es opcional —
+ * por defecto usa el valor fijo INC (8%), igual que siempre. Se puede
+ * pasar el IVA de la sede (Configuración) o el de la propia receta
+ * (`recetas.iva`, ya existía en la base pero no se usaba acá).
+ */
+export function precioBaseSinImpuesto(precioReal: number, iva: number = INC): number {
+  return precioReal / (1 + iva);
 }
 
 /** Food cost = costo de la porción / precio base sin impuesto. */
-export function foodCost(costoPorcion: number, precioReal: number): number {
-  const base = precioBaseSinImpuesto(precioReal);
+export function foodCost(costoPorcion: number, precioReal: number, iva: number = INC): number {
+  const base = precioBaseSinImpuesto(precioReal, iva);
   if (base <= 0) return 0;
   return costoPorcion / base;
 }
 
-/** Precio sugerido para alcanzar el food cost objetivo normal (35%). */
-export function precioSugerido(costoPorcion: number): number {
-  return (costoPorcion / FC_OBJ) * (1 + INC);
+/**
+ * Precio sugerido para alcanzar el food cost objetivo (35% por defecto,
+ * configurable por sede desde Configuración sin cambiar la fórmula).
+ */
+export function precioSugerido(
+  costoPorcion: number,
+  fcObjetivo: number = FC_OBJ,
+  iva: number = INC
+): number {
+  return (costoPorcion / fcObjetivo) * (1 + iva);
 }
 
-/** Precio sugerido para el Panel Ejecutivo, con food cost objetivo de 30%. */
-export function precioSugeridoPanel(costoPorcion: number): number {
-  return (costoPorcion / FC_OBJ_PANEL) * (1 + INC);
+/** Precio sugerido para el Panel Ejecutivo, con food cost objetivo de 30% por defecto. */
+export function precioSugeridoPanel(
+  costoPorcion: number,
+  fcObjetivoPanel: number = FC_OBJ_PANEL,
+  iva: number = INC
+): number {
+  return (costoPorcion / fcObjetivoPanel) * (1 + iva);
 }
 
 /** Utilidad en dinero = precio real - costo de la porción. */
@@ -99,19 +115,36 @@ export type ResumenCosteo = {
   margenBruto: number;
 };
 
-/** Calcula de una sola vez todos los indicadores que se muestran en la UI. */
+/** FC objetivo/IVA a usar en vez de los fijos — todos opcionales. */
+export type OpcionesCosteo = {
+  fcObjetivo?: number;
+  fcObjetivoPanel?: number;
+  iva?: number;
+};
+
+/**
+ * Calcula de una sola vez todos los indicadores que se muestran en la UI.
+ * `opciones` es nueva y opcional: sin pasarla, se comporta exactamente
+ * igual que antes (FC objetivo 35%/30%, IVA 8%). Se usa para pasar los
+ * valores configurados por sede (Configuración) y/o el IVA propio de la
+ * receta.
+ */
 export function calcularResumenCosteo(
   costoPorcion: number,
-  precioReal: number
+  precioReal: number,
+  opciones?: OpcionesCosteo
 ): ResumenCosteo {
-  const fc = foodCost(costoPorcion, precioReal);
+  const fcObjetivo = opciones?.fcObjetivo ?? FC_OBJ;
+  const fcObjetivoPanel = opciones?.fcObjetivoPanel ?? FC_OBJ_PANEL;
+  const iva = opciones?.iva ?? INC;
+  const fc = foodCost(costoPorcion, precioReal, iva);
   return {
     costoPorcion,
     precioReal,
     foodCost: fc,
     semaforo: semaforoFoodCost(fc),
-    precioSugerido: precioSugerido(costoPorcion),
-    precioSugeridoPanel: precioSugeridoPanel(costoPorcion),
+    precioSugerido: precioSugerido(costoPorcion, fcObjetivo, iva),
+    precioSugeridoPanel: precioSugeridoPanel(costoPorcion, fcObjetivoPanel, iva),
     utilidad: utilidad(precioReal, costoPorcion),
     margenBruto: margenBruto(precioReal, costoPorcion),
   };
