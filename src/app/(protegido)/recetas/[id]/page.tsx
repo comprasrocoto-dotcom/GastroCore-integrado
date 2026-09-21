@@ -6,7 +6,8 @@ import {
   listarInsumosParaPicker,
   listarSubrecetasParaPicker,
 } from "@/lib/data/ingredientes";
-import { calcularResumenCosteo, FC_OBJ } from "@/lib/costeo";
+import { calcularResumenCosteo } from "@/lib/costeo";
+import { obtenerConfiguracionCosteo } from "@/lib/data/configuracion";
 import { obtenerFichaPorReceta } from "@/lib/data/fichas";
 import { listarHistorialReceta } from "@/lib/data/historial";
 import SubidaFoto from "@/components/SubidaFoto";
@@ -52,21 +53,28 @@ export default async function RecetaDetallePage({
   const receta = await obtenerReceta(params.id);
   if (!receta) notFound();
 
-  const [ingredientes, insumos, subrecetas, familias, ficha, historial] = await Promise.all([
+  const [ingredientes, insumos, subrecetas, familias, ficha, historial, config] = await Promise.all([
     listarIngredientesDeReceta(receta.id),
     listarInsumosParaPicker(receta.sede_id),
     listarSubrecetasParaPicker(receta.sede_id),
     listarFamiliasParaPicker(receta.sede_id),
     obtenerFichaPorReceta(receta.id),
     listarHistorialReceta(receta.id),
+    obtenerConfiguracionCosteo(receta.sede_id),
   ]);
 
   const siguienteOrden = ingredientes.length
     ? Math.max(...ingredientes.map((i) => i.orden)) + 1
     : 1;
 
+  // El FC objetivo viene de la configuración de la sede; el IVA usa el de
+  // la propia receta (`recetas.iva`, editable en "Edición avanzada" más
+  // abajo) — ya existía en la base pero antes no se usaba en esta cuenta.
   const resumen = receta.precio_real
-    ? calcularResumenCosteo(receta.costo_porcion, receta.precio_real)
+    ? calcularResumenCosteo(receta.costo_porcion, receta.precio_real, {
+        fcObjetivo: config.fcObjetivo,
+        iva: receta.iva,
+      })
     : null;
 
   // El costo de ingredientes y el costo por merma no se guardan aparte —
@@ -323,7 +331,7 @@ export default async function RecetaDetallePage({
             </div>
             <div className="ticket-row">
               <span>Food cost objetivo</span>
-              <span>{(FC_OBJ * 100).toFixed(0)}%</span>
+              <span>{(config.fcObjetivo * 100).toFixed(0)}%</span>
             </div>
             {resumen ? (
               <>
