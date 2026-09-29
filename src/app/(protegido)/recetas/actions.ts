@@ -57,6 +57,7 @@ export async function crearRecetaCompleta(
     sedeId,
     nombre,
     familiaId: String(formData.get("familia_id") ?? "") || null,
+    subfamiliaId: String(formData.get("subfamilia_id") ?? "") || null,
     rendimiento: Number(formData.get("rendimiento") ?? 0) || null,
     unidadRendimientoCodigo: String(formData.get("unidad_rendimiento_codigo") ?? "") || null,
     desvioPct: Number(formData.get("desvio_pct") ?? 0) / 100,
@@ -85,6 +86,7 @@ export async function actualizarReceta(formData: FormData) {
     .update({
       nombre,
       familia_id: String(formData.get("familia_id") ?? "") || null,
+      subfamilia_id: String(formData.get("subfamilia_id") ?? "") || null,
       rendimiento: Number(formData.get("rendimiento") ?? 0) || null,
       unidad_rendimiento_codigo:
         String(formData.get("unidad_rendimiento_codigo") ?? "") || null,
