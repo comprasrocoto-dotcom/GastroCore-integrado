@@ -7,6 +7,8 @@ export type RecetaFila = {
   nombre: string;
   familia_id: string | null;
   familia_nombre: string | null;
+  subfamilia_id: string | null;
+  subfamilia_nombre: string | null;
   rendimiento: number | null;
   unidad_rendimiento_codigo: string | null;
   merma_pct: number;
@@ -24,7 +26,7 @@ export async function listarRecetas(sedeId: string): Promise<RecetaFila[]> {
   const { data, error } = await supabase
     .from("recetas")
     .select(
-      "id, nombre, familia_id, rendimiento, unidad_rendimiento_codigo, merma_pct, desvio_pct, costo_total, costo_porcion, precio_real, iva, activo, actualizado_en, familias(nombre)"
+      "id, nombre, familia_id, subfamilia_id, rendimiento, unidad_rendimiento_codigo, merma_pct, desvio_pct, costo_total, costo_porcion, precio_real, iva, activo, actualizado_en, familias(nombre), subfamilias(nombre)"
     )
     .eq("sede_id", sedeId)
     .order("nombre");
@@ -35,6 +37,8 @@ export async function listarRecetas(sedeId: string): Promise<RecetaFila[]> {
     nombre: r.nombre as string,
     familia_id: r.familia_id as string | null,
     familia_nombre: (r.familias as unknown as { nombre: string } | null)?.nombre ?? null,
+    subfamilia_id: r.subfamilia_id as string | null,
+    subfamilia_nombre: (r.subfamilias as unknown as { nombre: string } | null)?.nombre ?? null,
     rendimiento: r.rendimiento === null ? null : Number(r.rendimiento),
     unidad_rendimiento_codigo: r.unidad_rendimiento_codigo as string | null,
     merma_pct: Number(r.merma_pct),
@@ -53,18 +57,20 @@ export async function obtenerReceta(id: string) {
   const { data, error } = await supabase
     .from("recetas")
     .select(
-      "id, sede_id, nombre, familia_id, rendimiento, unidad_rendimiento_codigo, merma_pct, desvio_pct, costo_total, costo_porcion, precio_real, iva, activo, creado_en, actualizado_en, familias(nombre)"
+      "id, sede_id, nombre, familia_id, subfamilia_id, rendimiento, unidad_rendimiento_codigo, merma_pct, desvio_pct, costo_total, costo_porcion, precio_real, iva, activo, creado_en, actualizado_en, familias(nombre), subfamilias(nombre)"
     )
     .eq("id", id)
     .single();
 
   if (error || !data) return null;
-  const { familias, ...resto } = data as typeof data & {
+  const { familias, subfamilias, ...resto } = data as typeof data & {
     familias: { nombre: string } | null;
+    subfamilias: { nombre: string } | null;
   };
   return {
     ...resto,
     familia_nombre: (familias as unknown as { nombre: string } | null)?.nombre ?? null,
+    subfamilia_nombre: (subfamilias as unknown as { nombre: string } | null)?.nombre ?? null,
     rendimiento: data.rendimiento === null ? null : Number(data.rendimiento),
     merma_pct: Number(data.merma_pct),
     desvio_pct: Number(data.desvio_pct),
@@ -88,6 +94,7 @@ export async function crearRecetaConIngredientes(datos: {
   sedeId: string;
   nombre: string;
   familiaId: string | null;
+  subfamiliaId: string | null;
   rendimiento: number | null;
   unidadRendimientoCodigo: string | null;
   desvioPct: number;
@@ -108,6 +115,7 @@ export async function crearRecetaConIngredientes(datos: {
       sede_id: datos.sedeId,
       nombre: datos.nombre,
       familia_id: datos.familiaId,
+      subfamilia_id: datos.subfamiliaId,
       rendimiento: datos.rendimiento,
       unidad_rendimiento_codigo: datos.unidadRendimientoCodigo,
       desvio_pct: datos.desvioPct,
