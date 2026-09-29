@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { obtenerReceta, listarFamiliasParaPicker } from "@/lib/data/recetas";
+import { obtenerReceta } from "@/lib/data/recetas";
+import { listarFamiliasConSubfamilias } from "@/lib/data/familias";
 import {
   listarIngredientesDeReceta,
   listarInsumosParaPicker,
@@ -53,15 +54,22 @@ export default async function RecetaDetallePage({
   const receta = await obtenerReceta(params.id);
   if (!receta) notFound();
 
-  const [ingredientes, insumos, subrecetas, familias, ficha, historial, config] = await Promise.all([
+  const [ingredientes, insumos, subrecetas, familiasTodas, ficha, historial, config] = await Promise.all([
     listarIngredientesDeReceta(receta.id),
     listarInsumosParaPicker(receta.sede_id),
     listarSubrecetasParaPicker(receta.sede_id),
-    listarFamiliasParaPicker(receta.sede_id),
+    listarFamiliasConSubfamilias(receta.sede_id),
     obtenerFichaPorReceta(receta.id),
     listarHistorialReceta(receta.id),
     obtenerConfiguracionCosteo(receta.sede_id),
   ]);
+
+  // Igual que antes (listarFamiliasParaPicker filtraba solo activas), y acá
+  // además necesitamos las subfamilias anidadas para el select de
+  // "Edición avanzada".
+  const familias = familiasTodas
+    .filter((f) => f.activo)
+    .map((f) => ({ ...f, subfamilias: f.subfamilias.filter((s) => s.activo) }));
 
   const siguienteOrden = ingredientes.length
     ? Math.max(...ingredientes.map((i) => i.orden)) + 1
@@ -173,7 +181,12 @@ export default async function RecetaDetallePage({
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Familia</p>
-                <p className="mt-1 text-sm font-medium">{receta.familia_nombre ?? "General"}</p>
+                <p className="mt-1 text-sm font-medium">
+                  {receta.familia_nombre ?? "General"}
+                  {receta.subfamilia_nombre && (
+                    <span className="text-slate-400"> → {receta.subfamilia_nombre}</span>
+                  )}
+                </p>
               </div>
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Rendimiento</p>
@@ -459,6 +472,27 @@ export default async function RecetaDetallePage({
                   {f.nombre}
                 </option>
               ))}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs" style={{ color: "var(--muted)" }}>Subfamilia</label>
+            <select
+              name="subfamilia_id"
+              defaultValue={receta.subfamilia_id ?? ""}
+              className={inputClase}
+            >
+              <option value="">— Sin subfamilia —</option>
+              {familias.map((f) =>
+                f.subfamilias.length > 0 ? (
+                  <optgroup key={f.id} label={f.nombre}>
+                    {f.subfamilias.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.nombre}
+                      </option>
+                    ))}
+                  </optgroup>
+                ) : null
+              )}
             </select>
           </div>
           <div className="flex flex-col gap-1">
