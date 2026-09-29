@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { getUsuarioActual } from "@/lib/auth/usuario-actual";
 import { getSedesVisibles, resolverSedeActiva } from "@/lib/data/sedes";
-import { listarFamiliasParaPicker } from "@/lib/data/recetas";
+import { listarFamiliasConSubfamilias } from "@/lib/data/familias";
 import { listarInsumosParaPicker, listarSubrecetasParaPicker } from "@/lib/data/ingredientes";
 import { listarUnidades } from "@/lib/data/insumos";
 import { obtenerConfiguracionCosteo } from "@/lib/data/configuracion";
@@ -20,13 +20,20 @@ export default async function NuevaRecetaPage({
   const sedeActiva = resolverSedeActiva(usuario, sedesVisibles, searchParams.sede);
   if (!sedeActiva) return <p style={{ color: "var(--muted)" }}>No hay ninguna sede disponible.</p>;
 
-  const [familias, insumos, subrecetas, unidades, configCosteo] = await Promise.all([
-    listarFamiliasParaPicker(sedeActiva.id),
+  const [familiasTodas, insumos, subrecetas, unidades, configCosteo] = await Promise.all([
+    listarFamiliasConSubfamilias(sedeActiva.id),
     listarInsumosParaPicker(sedeActiva.id),
     listarSubrecetasParaPicker(sedeActiva.id),
     listarUnidades(),
     obtenerConfiguracionCosteo(sedeActiva.id),
   ]);
+
+  // Igual que antes (listarFamiliasParaPicker filtraba solo activas): acá
+  // filtramos activas a mano porque ahora necesitamos también las
+  // subfamilias anidadas de cada familia para el selector dependiente.
+  const familias = familiasTodas
+    .filter((f) => f.activo)
+    .map((f) => ({ ...f, subfamilias: f.subfamilias.filter((s) => s.activo) }));
 
   // Un solo listado para el buscador de ingredientes: insumos + subrecetas,
   // igual que el "catálogo" combinado de GastroCore.
