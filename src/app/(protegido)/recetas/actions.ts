@@ -3,15 +3,36 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import {
-  agregarLineaIngrediente,
-  eliminarLineaIngrediente,
-  recalcularReceta,
-} from "@/lib/data/ingredientes";
-import { crearRecetaConIngredientes } from "@/lib/data/recetas";
+import { crearRecetaConIngredientes, actualizarRecetaConIngredientes } from "@/lib/data/recetas";
 import { registrarHistorialReceta } from "@/lib/data/historial";
 
 export type EstadoReceta = { error: string | null };
+
+function parsearLineas(formData: FormData):
+  | {
+      tipoItem: "insumo" | "subreceta";
+      itemId: string;
+      cantidad: number;
+      unidadCodigo: string | null;
+      mermaPct: number;
+    }[]
+  | null {
+  try {
+    const crudo = JSON.parse(String(formData.get("ingredientes_json") ?? "[]"));
+    if (!Array.isArray(crudo)) return [];
+    return crudo
+      .filter((l) => l && l.itemId && Number(l.cantidad) > 0)
+      .map((l) => ({
+        tipoItem: l.tipoItem === "subreceta" ? "subreceta" : "insumo",
+        itemId: String(l.itemId),
+        cantidad: Number(l.cantidad),
+        unidadCodigo: l.unidadCodigo ? String(l.unidadCodigo) : null,
+        mermaPct: Number(l.mermaPct) || 0,
+      }));
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Crea la receta y todos sus ingredientes en un solo guardado — la usa el
@@ -29,27 +50,8 @@ export async function crearRecetaCompleta(
     return { error: "Falta el nombre de la receta." };
   }
 
-  let lineas: {
-    tipoItem: "insumo" | "subreceta";
-    itemId: string;
-    cantidad: number;
-    unidadCodigo: string | null;
-    mermaPct: number;
-  }[] = [];
-  try {
-    const crudo = JSON.parse(String(formData.get("ingredientes_json") ?? "[]"));
-    if (Array.isArray(crudo)) {
-      lineas = crudo
-        .filter((l) => l && l.itemId && Number(l.cantidad) > 0)
-        .map((l) => ({
-          tipoItem: l.tipoItem === "subreceta" ? "subreceta" : "insumo",
-          itemId: String(l.itemId),
-          cantidad: Number(l.cantidad),
-          unidadCodigo: l.unidadCodigo ? String(l.unidadCodigo) : null,
-          mermaPct: Number(l.mermaPct) || 0,
-        }));
-    }
-  } catch {
+  const lineas = parsearLineas(formData);
+  if (lineas === null) {
     return { error: "No se pudo leer la lista de ingredientes." };
   }
 
@@ -57,7 +59,7 @@ export async function crearRecetaCompleta(
     sedeId,
     nombre,
     familiaId: String(formData.get("familia_id") ?? "") || null,
-    subfamiliaId: String(formData.get("subfamilia_id") ?? "") || null,
+    subfamiliaId: null,
     rendimiento: Number(formData.get("rendimiento") ?? 0) || null,
     unidadRendimientoCodigo: String(formData.get("unidad_rendimiento_codigo") ?? "") || null,
     desvioPct: Number(formData.get("desvio_pct") ?? 0) / 100,
@@ -75,68 +77,49 @@ export async function crearRecetaCompleta(
   redirect(`/recetas/${resultado.id}?sede=${sedeId}`);
 }
 
-export async function actualizarReceta(formData: FormData) {
+/**
+ * Actualiza una receta existente y reemplaza toda su lista de
+ * ingredientes — usa la misma pantalla "Nueva receta" (RecetaForm) que la
+ * creación, tal como hace GastroCore reutilizando /recetas/nueva?edit=ID
+ * en vez de tener un formulario de edición aparte.
+ */
+export async function actualizarRecetaCompleta(
+  _estadoPrevio: EstadoReceta,
+  formData: FormData
+): Promise<EstadoReceta> {
   const id = String(formData.get("id") ?? "");
-  const nombre = String(formData.get("nombre") ?? "").trim();
-  if (!id || !nombre) return;
-
-  const supabase = createClient();
-  await supabase
-    .from("recetas")
-    .update({
-      nombre,
-      familia_id: String(formData.get("familia_id") ?? "") || null,
-      subfamilia_id: String(formData.get("subfamilia_id") ?? "") || null,
-      rendimiento: Number(formData.get("rendimiento") ?? 0) || null,
-      unidad_rendimiento_codigo:
-        String(formData.get("unidad_rendimiento_codigo") ?? "") || null,
-      precio_real: Number(formData.get("precio_real") ?? 0) || null,
-      iva: Number(formData.get("iva") ?? 8) / 100,
-      merma_pct: Number(formData.get("merma_pct") ?? 0) / 100,
-      desvio_pct: Number(formData.get("desvio_pct") ?? 0) / 100,
-      activo: formData.get("activo") === "on",
-    })
-    .eq("id", id);
-
-  await recalcularReceta(id);
-  await registrarHistorialReceta(id, "edicion");
-  revalidatePath(`/recetas/${id}`);
-}
-
-export async function agregarIngredienteReceta(formData: FormData) {
-  const recetaId = String(formData.get("receta_id") ?? "");
   const sedeId = String(formData.get("sede_id") ?? "");
-  const tipoItem = String(formData.get("tipo_item") ?? "insumo") as "insumo" | "subreceta";
-  const cantidad = Number(formData.get("cantidad") ?? 0);
-  if (!recetaId || !cantidad) return;
+  const nombre = String(formData.get("nombre") ?? "").trim();
+  if (!id || !sedeId || !nombre) {
+    return { error: "Falta el nombre de la receta." };
+  }
 
-  await agregarLineaIngrediente({
+  const lineas = parsearLineas(formData);
+  if (lineas === null) {
+    return { error: "No se pudo leer la lista de ingredientes." };
+  }
+
+  const resultado = await actualizarRecetaConIngredientes({
+    id,
     sedeId,
-    recetaId,
-    tipoItem,
-    insumoId: tipoItem === "insumo" ? String(formData.get("insumo_id") ?? "") : undefined,
-    subrecetaId:
-      tipoItem === "subreceta" ? String(formData.get("subreceta_ref_id") ?? "") : undefined,
-    cantidad,
-    unidadCodigo: String(formData.get("unidad_codigo") ?? "") || null,
-    mermaPct: Number(formData.get("merma_pct") ?? 0) / 100,
-    orden: Number(formData.get("orden") ?? 0),
+    nombre,
+    familiaId: String(formData.get("familia_id") ?? "") || null,
+    rendimiento: Number(formData.get("rendimiento") ?? 0) || null,
+    unidadRendimientoCodigo: String(formData.get("unidad_rendimiento_codigo") ?? "") || null,
+    desvioPct: Number(formData.get("desvio_pct") ?? 0) / 100,
+    precioReal: Number(formData.get("precio_real") ?? 0) || null,
+    lineas,
   });
 
-  await recalcularReceta(recetaId);
-  await registrarHistorialReceta(recetaId, "ingredientes");
-  revalidatePath(`/recetas/${recetaId}`);
-}
+  if (resultado && "error" in resultado) {
+    return { error: `No se pudo actualizar la receta: ${resultado.error}` };
+  }
 
-export async function eliminarIngredienteReceta(formData: FormData) {
-  const id = String(formData.get("id") ?? "");
-  const recetaId = String(formData.get("receta_id") ?? "");
-  if (!id || !recetaId) return;
+  await registrarHistorialReceta(id, "edicion");
 
-  await eliminarLineaIngrediente(id);
-  await recalcularReceta(recetaId);
-  await registrarHistorialReceta(recetaId, "ingredientes");
-  revalidatePath(`/recetas/${recetaId}`);
+  revalidatePath("/recetas");
+  revalidatePath(`/recetas/${id}`);
+  redirect(`/recetas/${id}?sede=${sedeId}`);
 }
 
 /**
