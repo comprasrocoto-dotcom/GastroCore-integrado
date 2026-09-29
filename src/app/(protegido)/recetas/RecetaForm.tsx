@@ -40,6 +40,12 @@ function BotonGuardar() {
   );
 }
 
+type FamiliaConSubfamilias = {
+  id: string;
+  nombre: string;
+  subfamilias: { id: string; nombre: string }[];
+};
+
 export default function RecetaForm({
   sedeId,
   familias,
@@ -48,7 +54,7 @@ export default function RecetaForm({
   configCosteo,
 }: {
   sedeId: string;
-  familias: { id: string; nombre: string }[];
+  familias: FamiliaConSubfamilias[];
   items: ItemOpt[];
   unidades: { codigo: string; nombre: string }[];
   configCosteo: ConfigCosteo;
@@ -62,6 +68,7 @@ export default function RecetaForm({
   const [unidadRendimiento, setUnidadRendimiento] = useState("UND");
   const [desvioPct, setDesvioPct] = useState(0);
   const [familiaId, setFamiliaId] = useState("");
+  const [subfamiliaId, setSubfamiliaId] = useState("");
   const [precioReal, setPrecioReal] = useState(0);
   const [lineas, setLineas] = useState<Linea[]>([]);
   const [errores, setErrores] = useState<string[]>([]);
@@ -72,6 +79,16 @@ export default function RecetaForm({
     items.forEach((i) => (m[i.id] = i));
     return m;
   }, [items]);
+
+  const subfamiliasDeFamilia = useMemo(
+    () => familias.find((f) => f.id === familiaId)?.subfamilias ?? [],
+    [familias, familiaId]
+  );
+
+  const onCambiarFamilia = (id: string) => {
+    setFamiliaId(id);
+    setSubfamiliaId("");
+  };
 
   const filas = useMemo(() => {
     return lineas.map((l) => {
@@ -150,6 +167,7 @@ export default function RecetaForm({
       <input type="hidden" name="unidad_rendimiento_codigo" value={unidadRendimiento} />
       <input type="hidden" name="desvio_pct" value={desvioPct} />
       <input type="hidden" name="familia_id" value={familiaId} />
+      <input type="hidden" name="subfamilia_id" value={subfamiliaId} />
       <input type="hidden" name="precio_real" value={precioReal} />
       <input type="hidden" name="ingredientes_json" value={ingredientesJson} />
 
@@ -219,11 +237,24 @@ export default function RecetaForm({
             <span className="mb-1 block text-xs font-medium text-slate-500">Familia (categoría de la carta)</span>
             <SearchableSelect
               value={familiaId}
-              onChange={setFamiliaId}
+              onChange={onCambiarFamilia}
               options={familias.map((f) => ({ value: f.id, label: f.nombre }))}
               placeholder="Elige la familia…"
               searchPlaceholder="Buscar familia…"
               clearLabel="Sin clasificar"
+            />
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-xs font-medium text-slate-500">Subfamilia (opcional)</span>
+            <SearchableSelect
+              value={subfamiliaId}
+              onChange={setSubfamiliaId}
+              options={subfamiliasDeFamilia.map((s) => ({ value: s.id, label: s.nombre }))}
+              placeholder={familiaId ? "Elige la subfamilia…" : "Primero elegí la familia"}
+              searchPlaceholder="Buscar subfamilia…"
+              clearLabel="Sin subfamilia"
+              disabled={!familiaId}
+              emptyLabel="Esta familia no tiene subfamilias"
             />
           </label>
         </div>
