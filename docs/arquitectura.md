@@ -617,3 +617,71 @@ Estos cambios no modifican ninguna fórmula de costeo ni tocan el
 GastroCore viejo — solo completan los datos y el diseño del Recetario
 en Gastro Central Integrado para que sea, en los hechos, la misma
 pantalla que el equipo ya usa todos los días.
+
+## Estructura de "Nueva receta" / "Editar receta" igual a la del GastroCore antiguo (29/09)
+
+Mariluz pidió revisar toda la pantalla de creación/edición de recetas y
+dejarla igual a la del GastroCore antiguo (el sistema real que usa hoy el
+equipo), porque hasta ahora Gastro Central Integrado tenía una estructura
+distinta (formulario de creación por un lado, y un mini-formulario de
+edición aparte, con un campo de "subfamilia" que el sistema real no tiene
+para recetas).
+
+**Lo que se comparó primero (mirando el GastroCore real, sin tocar nada
+ahí):** la pantalla real usa una sola pantalla tanto para crear como para
+editar una receta — al editar, simplemente se abre la misma pantalla de
+"Nueva receta" pero precargada con los datos de esa receta. Y en la
+sección de Clasificación solo hay un campo, "Familia" — no existe
+subfamilia para recetas (subfamilia es un concepto que existe solo para
+insumos, no para recetas).
+
+**Lo que se cambió en Gastro Central Integrado para igualarlo:**
+
+- La pantalla "Nueva receta" ahora también sirve para editar: al entrar
+  con un link tipo `/recetas/nueva?edit=ID`, se precarga automáticamente
+  el nombre, rendimiento, familia, precio de venta y la lista de
+  ingredientes de esa receta, y el botón pasa a decir "Actualizar
+  receta" en vez de "Crear receta".
+- El botón "✎ Editar receta" del detalle de cada receta ahora lleva a
+  esa misma pantalla (antes abría un mini-formulario aparte, más
+  limitado).
+- Se sacó el campo de "Subfamilia" del formulario de recetas — no existe
+  en el sistema real y no se usa en el cálculo de costos.
+- El detalle de la receta se simplificó: ya no tiene el mini-formulario
+  de edición ni los botones para agregar/quitar ingredientes ahí mismo
+  (eso ahora se hace desde "Editar receta", como en el sistema real). La
+  tabla de ingredientes del detalle ahora es solo para consultar.
+- Al guardar una edición, se reemplaza toda la lista de ingredientes de
+  esa receta con lo que quedó armado en pantalla (en vez de ir
+  agregando/quitando de a una línea), igual que hace "Nueva receta" al
+  crear.
+
+**Lo que se encontró en el camino y quedó explícitamente pendiente, por
+decisión de Mariluz:** al revisar por qué las recetas migradas se veían
+"vacías" al editarlas, se encontró que **88 de las 90 recetas reales
+migradas no tienen guardado el detalle de sus ingredientes** (solo se
+migró el costo total ya calculado, no la lista línea por línea) — por
+eso, al abrir "Editar receta" en una receta real, la lista de
+ingredientes aparece vacía aunque el costo total siga siendo el
+correcto. Se le consultó a Mariluz cómo seguir, y decidió: **arreglar
+primero la estructura de la pantalla (lo de este cambio) y dejar la
+migración del detalle de ingredientes para una tarea aparte, más
+adelante.**
+
+**Lo que sigue pendiente de confirmar con Mariluz (no se inventó nada):**
+
+1. Si quiere que se agregue un campo de "Referencia ERP" al formulario —
+   en el sistema real existe, pero la regla de cómo se numera
+   automáticamente todavía no está confirmada, y en la base de datos de
+   Gastro Central Integrado esa columna no existe todavía.
+2. Si quiere que se saque también el selector de "Unidad de rendimiento"
+   del formulario para que coincida al 100% con el real, o si prefiere
+   dejarlo porque ya cumple una función útil acá.
+3. Cuándo quiere encarar la migración del detalle de ingredientes de las
+   88 recetas que quedaron con la lista vacía.
+4. El Panel Ejecutivo sigue sin construirse — es una de las preguntas
+   pendientes del mapeo original, no se tocó en este cambio.
+
+No se modificó ni se tocó el GastroCore viejo (`gastro-core.vercel.app`)
+en ningún momento — todo esto se comparó solo mirando esa pantalla desde
+el navegador.
