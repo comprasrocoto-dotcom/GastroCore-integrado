@@ -1,8 +1,12 @@
 import Link from "next/link";
 import { getUsuarioActual } from "@/lib/auth/usuario-actual";
 import { getSedesVisibles, resolverSedeActiva } from "@/lib/data/sedes";
-import { listarFamiliasConSubfamilias } from "@/lib/data/familias";
-import { listarInsumosParaPicker, listarSubrecetasParaPicker } from "@/lib/data/ingredientes";
+import { listarFamiliasParaPicker, obtenerReceta } from "@/lib/data/recetas";
+import {
+  listarIngredientesDeReceta,
+  listarInsumosParaPicker,
+  listarSubrecetasParaPicker,
+} from "@/lib/data/ingredientes";
 import { listarUnidades } from "@/lib/data/insumos";
 import { obtenerConfiguracionCosteo } from "@/lib/data/configuracion";
 import type { ItemOpt } from "@/components/InsumoAutocomplete";
@@ -11,29 +15,33 @@ import RecetaForm from "../RecetaForm";
 export default async function NuevaRecetaPage({
   searchParams,
 }: {
-  searchParams: { sede?: string };
+  searchParams: { sede?: string; edit?: string };
 }) {
   const usuario = await getUsuarioActual();
   if (!usuario) return null;
 
+  // Igual que GastroCore: esta misma pantalla sirve para crear y para
+  // editar. Cuando llega ?edit=ID, se precarga la receta existente (datos
+  // + ingredientes) y el formulario pasa a modo edición.
+  const recetaExistente = searchParams.edit ? await obtenerReceta(searchParams.edit) : null;
+
   const sedesVisibles = await getSedesVisibles();
-  const sedeActiva = resolverSedeActiva(usuario, sedesVisibles, searchParams.sede);
+  const sedeActiva = resolverSedeActiva(
+    usuario,
+    sedesVisibles,
+    recetaExistente?.sede_id ?? searchParams.sede
+  );
   if (!sedeActiva) return <p style={{ color: "var(--muted)" }}>No hay ninguna sede disponible.</p>;
 
-  const [familiasTodas, insumos, subrecetas, unidades, configCosteo] = await Promise.all([
-    listarFamiliasConSubfamilias(sedeActiva.id),
-    listarInsumosParaPicker(sedeActiva.id),
-    listarSubrecetasParaPicker(sedeActiva.id),
-    listarUnidades(),
-    obtenerConfiguracionCosteo(sedeActiva.id),
-  ]);
-
-  // Igual que antes (listarFamiliasParaPicker filtraba solo activas): acá
-  // filtramos activas a mano porque ahora necesitamos también las
-  // subfamilias anidadas de cada familia para el selector dependiente.
-  const familias = familiasTodas
-    .filter((f) => f.activo)
-    .map((f) => ({ ...f, subfamilias: f.subfamilias.filter((s) => s.activo) }));
+  const [familias, insumos, subrecetas, unidades, configCosteo, ingredientesExistentes] =
+    await Promise.all([
+      listarFamiliasParaPicker(sedeActiva.id),
+      listarInsumosParaPicker(sedeActiva.id),
+      listarSubrecetasParaPicker(sedeActiva.id),
+      listarUnidades(),
+      obtenerConfiguracionCosteo(sedeActiva.id),
+      recetaExistente ? listarIngredientesDeReceta(recetaExistente.id) : Promise.resolve([]),
+    ]);
 
   // Un solo listado para el buscador de ingredientes: insumos + subrecetas,
   // igual que el "catálogo" combinado de GastroCore.
@@ -60,12 +68,32 @@ export default async function NuevaRecetaPage({
     })),
   ];
 
+  const valoresIniciales = recetaExistente
+    ? {
+        nombre: recetaExistente.nombre,
+        rendimiento: recetaExistente.rendimiento ?? 1,
+        unidadRendimiento: recetaExistente.unidad_rendimiento_codigo ?? "UND",
+        desvioPct: recetaExistente.desvio_pct * 100,
+        familiaId: recetaExistente.familia_id ?? "",
+        precioReal: recetaExistente.precio_real ?? 0,
+        lineas: ingredientesExistentes.map((i) => ({
+          itemId: (i.tipo_item === "insumo" ? i.insumo_id : i.subreceta_id) ?? "",
+          tipoItem: i.tipo_item,
+          unidad: i.unidad_codigo ?? "",
+          cantidad: i.cantidad,
+          mermaPct: i.merma_pct * 100,
+        })),
+      }
+    : undefined;
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-start justify-between">
         <div>
           <p className="eyebrow">{sedeActiva.marca_nombre} / {sedeActiva.nombre}</p>
-          <h1 className="text-xl font-semibold">Nueva receta</h1>
+          <h1 className="text-xl font-semibold">
+            {recetaExistente ? "Editar receta" : "Nueva receta"}
+          </h1>
           <p className="mt-1 text-sm" style={{ color: "var(--muted)" }}>
             Costeo por ingrediente con merma real, sincronizado con la base.
           </p>
@@ -80,6 +108,8 @@ export default async function NuevaRecetaPage({
         items={items}
         unidades={unidades}
         configCosteo={configCosteo}
+        recetaId={recetaExistente?.id}
+        valoresIniciales={valoresIniciales}
       />
     </div>
   );
