@@ -171,8 +171,14 @@ export default async function RecetasPage({
           <Link href={`/familias?sede=${sedeActiva.id}`} className="btn-secondary">
             Familias
           </Link>
+          <Link href={`/panel?sede=${sedeActiva.id}`} className="btn-secondary">
+            📊 Panel ejecutivo
+          </Link>
           <Link href={`/recetario?sede=${sedeActiva.id}`} className="btn-secondary">
             📖 Ver recetario completo
+          </Link>
+          <Link href={`/recetas/exportar?sede=${sedeActiva.id}`} className="btn-secondary">
+            ⬇ Exportar
           </Link>
           <Link href={`/recetas/nueva?sede=${sedeActiva.id}`} className="btn-primary">
             + Nueva receta
