@@ -147,6 +147,77 @@ export async function crearRecetaConIngredientes(datos: {
   return { id: receta.id as string };
 }
 
+/**
+ * Actualiza una receta existente y reemplaza toda su lista de
+ * ingredientes — usada por la pantalla "Nueva receta" (RecetaForm)
+ * reutilizada en modo edición (`/recetas/nueva?edit=ID`), igual que
+ * GastroCore. Reemplaza en vez de "parchear" línea por línea: borra las
+ * líneas anteriores de esta receta y vuelve a armarlas con lo que llega
+ * del navegador, tal como hace `crearRecetaConIngredientes`.
+ */
+export async function actualizarRecetaConIngredientes(datos: {
+  id: string;
+  sedeId: string;
+  nombre: string;
+  familiaId: string | null;
+  rendimiento: number | null;
+  unidadRendimientoCodigo: string | null;
+  desvioPct: number;
+  precioReal: number | null;
+  lineas: {
+    tipoItem: "insumo" | "subreceta";
+    itemId: string;
+    cantidad: number;
+    unidadCodigo: string | null;
+    mermaPct: number;
+  }[];
+}): Promise<{ id: string } | { error: string }> {
+  const supabase = createClient();
+
+  const { error: errorUpdate } = await supabase
+    .from("recetas")
+    .update({
+      nombre: datos.nombre,
+      familia_id: datos.familiaId,
+      rendimiento: datos.rendimiento,
+      unidad_rendimiento_codigo: datos.unidadRendimientoCodigo,
+      desvio_pct: datos.desvioPct,
+      precio_real: datos.precioReal,
+    })
+    .eq("id", datos.id);
+
+  if (errorUpdate) {
+    return { error: errorUpdate.message };
+  }
+
+  const { error: errorDelete } = await supabase
+    .from("ingredientes_receta")
+    .delete()
+    .eq("receta_id", datos.id);
+
+  if (errorDelete) {
+    return { error: errorDelete.message };
+  }
+
+  for (const [idx, linea] of datos.lineas.entries()) {
+    await agregarLineaIngrediente({
+      sedeId: datos.sedeId,
+      recetaId: datos.id,
+      tipoItem: linea.tipoItem,
+      insumoId: linea.tipoItem === "insumo" ? linea.itemId : undefined,
+      subrecetaId: linea.tipoItem === "subreceta" ? linea.itemId : undefined,
+      cantidad: linea.cantidad,
+      unidadCodigo: linea.unidadCodigo,
+      mermaPct: linea.mermaPct,
+      orden: idx + 1,
+    });
+  }
+
+  await recalcularReceta(datos.id);
+
+  return { id: datos.id };
+}
+
 export async function listarFamiliasParaPicker(sedeId: string) {
   const supabase = createClient();
   const { data, error } = await supabase
