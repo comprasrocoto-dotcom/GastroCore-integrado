@@ -524,3 +524,96 @@ de negocio): el panel de Usuarios, la migración de subfamilia en
 recetas, el sistema real de conversión de unidades de medida, la
 numeración de Referencia ERP, el Panel Ejecutivo, la pantalla de
 Análisis, el manual, y la trazabilidad campo por campo.
+
+## Clasificación opcional por subfamilia en recetas + réplica exacta del Recetario real (29/09)
+
+Esta etapa tuvo dos partes. La primera, chica: terminar de subir un
+feature que había quedado preparado de una etapa anterior (clasificar
+una receta también por subfamilia, además de familia). La segunda,
+mucho más grande: Mariluz pidió analizar a fondo la pantalla de Recetas
+del GastroCore real (`gastro-core.vercel.app/recetas`) y replicarla tal
+cual en Gastro Central Integrado.
+
+**Hallazgo importante confirmado por Mariluz: `gastro-core.vercel.app`
+es producción real, no un experimento viejo.** En una etapa anterior se
+había marcado como "Hallazgo C" — un repositorio viejo con una rama
+migrada a Supabase, sin saber si seguía en uso. Mariluz confirmó
+explícitamente: **"Sí, es el que usamos hoy"**. A partir de ahora ese
+repositorio y esa base de datos se tratan como producción real de la
+operación diaria del equipo: **se sigue mirando desde el navegador para
+entender cómo funciona, pero nunca se toca ni se le hace ningún push** —
+Mariluz lo confirmó también: "seguí así (solo mirar, nunca tocar el
+repo viejo)".
+
+**1) Subfamilia opcional en recetas (feature chico, ya preparado antes):**
+
+- Cada receta puede ahora, opcionalmente, tener además de su familia
+  (ej. "Cócteles") una subfamilia (ej. "Con pisco"). Es un dato nuevo,
+  opcional — no reemplaza nada, ni cambia el cálculo de ningún costo.
+- Se ve en "Nueva receta" (selector de subfamilia que se habilita según
+  la familia elegida) y en el detalle de la receta ("Información
+  general" y "Edición avanzada").
+
+**2) Réplica del Recetario real — el trabajo grande de esta etapa:**
+
+Al comparar la pantalla real con la nuestra aparecieron dos problemas
+que había que resolver antes de poder "copiar el diseño":
+
+- **La base de datos de Gastro Central Integrado casi no tenía datos
+  reales:** solo 3 recetas de prueba, y las "familias" que existían eran
+  categorías de otro tipo (para clasificar insumos), no las categorías
+  de carta que se ven en el Recetario real (SODAS, CEVICHES, ARROCES,
+  etc.).
+- **La jerarquía de agrupamiento no era la que parecía a primera vista.**
+  Se le preguntó a Mariluz y confirmó el modelo correcto: **Centro de
+  costo (BAR o COCINA) → Familia** (SODAS, CEVICHES, ARROCES...). "Centro
+  de costo" es un dato que tiene cada familia, no una tabla aparte, y las
+  "subfamilias" de nuestra base son para otra cosa (clasificar insumos),
+  no para esta pantalla.
+
+Con esas dos decisiones confirmadas por Mariluz (nunca inventadas), se
+hizo lo siguiente:
+
+- Se migraron a la base de datos de Gastro Central Integrado, para la
+  sede Rocoto: **17 familias** (5 de BAR, 12 de COCINA) y **87 recetas**
+  reales, con su nombre, familia, costo y precio de venta, tomados
+  directamente de lo que se ve hoy en pantalla en `gastro-core.vercel.app`
+  (Mariluz eligió esta opción entre las alternativas que se le
+  plantearon). No se migró el detalle de ingredientes de cada receta,
+  solo lo necesario para que el Recetario se vea y calcule igual.
+- Se verificó, número por número, que los datos migrados coinciden
+  exactamente con la pantalla real: 87 recetas, costo promedio
+  $13.564, food cost promedio 26,4%, 71 recetas rentables y 16 fuera de
+  objetivo — todos estos números ya se veían así en Gastro Central
+  Integrado antes de tocar ninguna pantalla, solo con los datos
+  migrados.
+- Se descubrió y confirmó una regla de negocio que no estaba
+  documentada: cuando el food cost de una receta está en la zona
+  "Amarillo" (Vigilar), la columna de "Precio Sugerido" no muestra un
+  número — muestra "✓ Correcto", porque ya está dentro del rango
+  aceptable. Se confirmó revisando todos los casos visibles en la
+  pantalla real antes de replicarlo.
+- Se rehízo la pantalla de Recetas (`/recetas`) para que se vea y se
+  comporte igual que la real: mismas tarjetas de resumen arriba, mismo
+  panel lateral agrupando por Centro de costo → Familia, mismos filtros
+  (familia, food cost con los rangos Verde/Amarillo/Rojo, activos/
+  inactivos, centro de costo), y la tabla de recetas agrupada en esos
+  mismos dos niveles, con la regla del "✓ Correcto" incluida. No se
+  inventó ninguna fórmula nueva: los cálculos de costo y food cost son
+  los mismos que ya usaba Gastro Central Integrado desde antes, y ya
+  coincidían exactamente con los de la pantalla real.
+- Se aprovechó y se dejó más visible el food cost promedio general con
+  su propio semáforo de color (verde/amarillo/rojo), igual que en cada
+  receta individual.
+
+**Lo que quedó anotado para más adelante, sin construirse todavía:** en
+la pantalla real hay un botón "Panel Ejecutivo" que lleva a una pantalla
+con indicadores que Gastro Central Integrado todavía no tiene. No se
+construyó porque los indicadores de ese panel son parte de las preguntas
+que Mariluz todavía tiene pendiente de responder (una de las 6 preguntas
+del mapeo del 21/09).
+
+Estos cambios no modifican ninguna fórmula de costeo ni tocan el
+GastroCore viejo — solo completan los datos y el diseño del Recetario
+en Gastro Central Integrado para que sea, en los hechos, la misma
+pantalla que el equipo ya usa todos los días.
