@@ -93,7 +93,7 @@ export async function GET(req: Request) {
 
   const nombreArchivo = `recetario-${sede.nombre.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.xlsx`;
 
-  return new NextResponse(buffer, {
+  return new NextResponse(Buffer.from(buffer), {
     headers: {
       "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       "Content-Disposition": `attachment; filename="${nombreArchivo}"`,
