@@ -57,20 +57,22 @@ export async function obtenerReceta(id: string) {
   const { data, error } = await supabase
     .from("recetas")
     .select(
-      "id, sede_id, nombre, familia_id, subfamilia_id, rendimiento, unidad_rendimiento_codigo, merma_pct, desvio_pct, costo_total, costo_porcion, precio_real, iva, activo, creado_en, actualizado_en, familias(nombre), subfamilias(nombre)"
+      "id, sede_id, nombre, familia_id, subfamilia_id, rendimiento, unidad_rendimiento_codigo, merma_pct, desvio_pct, costo_total, costo_porcion, precio_real, iva, activo, creado_en, actualizado_en, familias(nombre), subfamilias(nombre), sedes(nombre)"
     )
     .eq("id", id)
     .single();
 
   if (error || !data) return null;
-  const { familias, subfamilias, ...resto } = data as typeof data & {
+  const { familias, subfamilias, sedes, ...resto } = data as typeof data & {
     familias: { nombre: string } | null;
     subfamilias: { nombre: string } | null;
+    sedes: { nombre: string } | null;
   };
   return {
     ...resto,
     familia_nombre: (familias as unknown as { nombre: string } | null)?.nombre ?? null,
     subfamilia_nombre: (subfamilias as unknown as { nombre: string } | null)?.nombre ?? null,
+    sede_nombre: (sedes as unknown as { nombre: string } | null)?.nombre ?? null,
     rendimiento: data.rendimiento === null ? null : Number(data.rendimiento),
     merma_pct: Number(data.merma_pct),
     desvio_pct: Number(data.desvio_pct),
