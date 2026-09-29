@@ -1,6 +1,7 @@
-import { PDFDocument, StandardFonts, rgb, type RGB } from "pdf-lib";
+import { PDFDocument, StandardFonts, rgb, type RGB, type PDFFont, type PDFPage } from "pdf-lib";
 
 type IngredienteLinea = {
+  tipo_item: "insumo" | "subreceta";
   descripcion: string;
   unidad_codigo: string | null;
   cantidad: number;
@@ -12,179 +13,234 @@ type IngredienteLinea = {
 type RecetaDatos = {
   nombre: string;
   familia_nombre: string | null;
+  sede_nombre: string | null;
   rendimiento: number | null;
-  unidad_rendimiento_codigo: string | null;
-  costo_total: number;
   costo_porcion: number;
   precio_real: number | null;
-  desvio_pct: number;
 };
 
 type ResumenCosteo = {
-  precioSugerido: number;
-  utilidad: number;
   foodCost: number;
-  margenBruto: number;
 };
 
 const ANCHO = 595.28; // A4
 const ALTO = 841.89;
 const MARGEN = 40;
+const ANCHO_UTIL = ANCHO - MARGEN * 2;
+
+const AZUL: RGB = rgb(0.118, 0.227, 0.373); // #1E3A5F — mismo azul de marca que el resto de la app
+const AZUL_CLARO: RGB = rgb(0.29, 0.56, 0.89); // acento
+const GRIS: RGB = rgb(0.42, 0.46, 0.52);
+const GRIS_CLARO: RGB = rgb(0.85, 0.86, 0.88);
+const NEGRO: RGB = rgb(0.12, 0.13, 0.15);
+const FILA_PAR: RGB = rgb(0.96, 0.97, 0.98);
+const BLANCO: RGB = rgb(1, 1, 1);
 
 const money = (n: number) => "$" + Math.round(n || 0).toLocaleString("es-CO");
 
+/** "50,6" si tiene fracción, "50" si es entero. */
+function formatCantidad(n: number): string {
+  const redondeado = Math.round(n * 10) / 10;
+  return Number.isInteger(redondeado) ? String(redondeado) : redondeado.toFixed(1).replace(".", ",");
+}
+
+const COLUMNAS = [
+  { titulo: "Ingrediente", ancho: 145, alinear: "izq" as const },
+  { titulo: "Tipo", ancho: 55, alinear: "izq" as const },
+  { titulo: "Cantidad", ancho: 45, alinear: "der" as const },
+  { titulo: "Unidad", ancho: 55, alinear: "izq" as const },
+  { titulo: "% Merma", ancho: 50, alinear: "der" as const },
+  { titulo: "Cant. real", ancho: 55, alinear: "der" as const },
+  { titulo: "Costo unit.", ancho: 55, alinear: "der" as const },
+  { titulo: "Costo línea", ancho: 55, alinear: "der" as const },
+];
+const ALTO_FILA_TABLA = 18;
+const ALTO_HEADER_TABLA = 22;
+
 /**
- * Arma el PDF de una receta con los mismos datos que se ven en
- * `/recetas/[id]`: info general, tarjetas de costo/precio, tabla de
- * ingredientes y resumen de costos. No inventa ni recalcula nada — recibe
- * los mismos números que ya calculó la página (mismas funciones de
- * `lib/costeo.ts`).
+ * Genera el PDF de una receta con el mismo diseño que ya usa el equipo en
+ * el GastroCore real (ficha tipo "ticket" de una sola preparación, pensada
+ * para imprimirse en cocina: encabezado con nombre/familia/sede/fecha,
+ * cuatro indicadores arriba, tabla de ingredientes y el costo total de la
+ * preparación). No recalcula nada — recibe los mismos números que ya
+ * calculó `/recetas/[id]` con las funciones de `lib/costeo.ts`.
  */
 export async function generarPdfReceta(datos: {
   receta: RecetaDatos;
   ingredientes: IngredienteLinea[];
   resumen: ResumenCosteo | null;
-  costoBaseSinMerma: number;
-  costoPorMerma: number;
-  desvioMonto: number;
-  foodCostObjetivo: number;
+  costoTotalPreparacion: number;
 }): Promise<Uint8Array> {
-  const { receta, ingredientes, resumen, costoBaseSinMerma, costoPorMerma, desvioMonto, foodCostObjetivo } =
-    datos;
+  const { receta, ingredientes, resumen, costoTotalPreparacion } = datos;
 
   const pdf = await PDFDocument.create();
-  let page = pdf.addPage([ANCHO, ALTO]);
   const font = await pdf.embedFont(StandardFonts.Helvetica);
   const fontBold = await pdf.embedFont(StandardFonts.HelveticaBold);
 
-  let y = 800;
-  const azul: RGB = rgb(0.118, 0.227, 0.373); // #1E3A5F
-  const gris: RGB = rgb(0.4, 0.44, 0.5);
-  const negro: RGB = rgb(0.1, 0.1, 0.12);
-  const lineaClara: RGB = rgb(0.85, 0.86, 0.88);
+  const fecha = new Date().toLocaleDateString("es-CO", { day: "numeric", month: "long", year: "numeric" });
+  const paginas: PDFPage[] = [];
 
-  function texto(t: string, x: number, yy: number, opts?: { size?: number; bold?: boolean; color?: RGB }) {
-    page.drawText(t, {
+  let page = pdf.addPage([ANCHO, ALTO]);
+  paginas.push(page);
+  let y = 0;
+
+  function texto(
+    t: string,
+    x: number,
+    yy: number,
+    opts?: { size?: number; bold?: boolean; color?: RGB; derecha?: boolean; centro?: boolean; ancho?: number }
+  ) {
+    const size = opts?.size ?? 9;
+    const f: PDFFont = opts?.bold ? fontBold : font;
+    let xx = x;
+    if (opts?.derecha && opts.ancho !== undefined) {
+      xx = x + opts.ancho - f.widthOfTextAtSize(t, size);
+    } else if (opts?.centro && opts.ancho !== undefined) {
+      xx = x + (opts.ancho - f.widthOfTextAtSize(t, size)) / 2;
+    }
+    page.drawText(t, { x: xx, y: yy, size, font: f, color: opts?.color ?? NEGRO });
+  }
+
+  function rect(x: number, yy: number, w: number, h: number, opts: { fill?: RGB; stroke?: RGB; strokeW?: number }) {
+    page.drawRectangle({
       x,
       y: yy,
-      size: opts?.size ?? 10,
-      font: opts?.bold ? fontBold : font,
-      color: opts?.color ?? negro,
+      width: w,
+      height: h,
+      color: opts.fill,
+      borderColor: opts.stroke,
+      borderWidth: opts.stroke ? opts.strokeW ?? 0.6 : undefined,
     });
   }
 
-  function linea(yy: number) {
-    page.drawLine({ start: { x: MARGEN, y: yy }, end: { x: ANCHO - MARGEN, y: yy }, thickness: 0.5, color: lineaClara });
-  }
+  function dibujarEncabezado(completo: boolean) {
+    const alturaBanda = completo ? 86 : 50;
+    rect(0, ALTO - alturaBanda, ANCHO, alturaBanda, { fill: AZUL });
+    rect(0, ALTO - alturaBanda - 3, ANCHO, 3, { fill: AZUL_CLARO });
 
-  function nuevaPaginaSiHaceFalta(alturaNecesaria: number) {
-    if (y - alturaNecesaria < 60) {
-      page = pdf.addPage([ANCHO, ALTO]);
-      y = 800;
+    texto(receta.nombre.toUpperCase(), MARGEN, ALTO - 34, { size: 17, bold: true, color: BLANCO });
+    if (completo) {
+      const tipoLinea = `${(receta.familia_nombre ?? "GENERAL").toUpperCase()}  ·  RECETA`;
+      texto(tipoLinea, MARGEN, ALTO - 52, { size: 9, color: rgb(0.82, 0.87, 0.93) });
     }
+
+    const sede = receta.sede_nombre ?? "";
+    const wSede = fontBold.widthOfTextAtSize(sede, 10);
+    page.drawText(sede, { x: ANCHO - MARGEN - wSede, y: ALTO - 24, size: 10, font: fontBold, color: BLANCO });
+    const wFecha = font.widthOfTextAtSize(fecha, 8);
+    page.drawText(fecha, { x: ANCHO - MARGEN - wFecha, y: ALTO - 37, size: 8, color: rgb(0.82, 0.87, 0.93), font });
+
+    y = ALTO - alturaBanda - 3 - (completo ? 30 : 20);
   }
 
-  // Encabezado
-  texto("GASTRO CENTRAL", MARGEN, y, { size: 9, bold: true, color: gris });
-  y -= 22;
-  texto(receta.nombre, MARGEN, y, { size: 18, bold: true, color: azul });
-  y -= 18;
-  texto(
-    `Familia: ${receta.familia_nombre ?? "General"}   ·   Rendimiento: ${receta.rendimiento ?? "—"} ${
-      receta.unidad_rendimiento_codigo ?? ""
-    }`,
-    MARGEN,
-    y,
-    { size: 10, color: gris }
-  );
-  y -= 26;
+  function dibujarTarjetas() {
+    const gap = 10;
+    const anchoTarjeta = (ANCHO_UTIL - gap * 3) / 4;
+    const alturaTarjeta = 42;
+    const tarjetas: [string, string][] = [
+      ["Porciones", String(receta.rendimiento ?? "—")],
+      ["Costo del plato", money(receta.costo_porcion)],
+      ["Precio real", receta.precio_real ? money(receta.precio_real) : "Sin precio"],
+      ["Food cost", resumen ? `${(resumen.foodCost * 100).toFixed(1)}%` : "—"],
+    ];
+    tarjetas.forEach(([label, valor], idx) => {
+      const x = MARGEN + idx * (anchoTarjeta + gap);
+      rect(x, y - alturaTarjeta, anchoTarjeta, alturaTarjeta, { fill: rgb(0.975, 0.98, 0.985), stroke: GRIS_CLARO, strokeW: 0.6 });
+      texto(label.toUpperCase(), x + 10, y - 16, { size: 7, color: GRIS });
+      texto(valor, x + 10, y - 32, { size: 12.5, bold: true, color: AZUL });
+    });
+    y -= alturaTarjeta + 22;
+  }
 
-  // Tarjetas de costos
-  const tarjetas: [string, string][] = [
-    ["Costo del plato", money(receta.costo_porcion)],
-    ["Precio sugerido", resumen ? money(resumen.precioSugerido) : "—"],
-    ["Precio real", receta.precio_real ? money(receta.precio_real) : "Sin precio"],
-    ["Utilidad", resumen ? money(resumen.utilidad) : "—"],
-  ];
-  const anchoTarjeta = (ANCHO - MARGEN * 2) / 4;
-  tarjetas.forEach(([label, valor], idx) => {
-    const x = MARGEN + idx * anchoTarjeta;
-    texto(label.toUpperCase(), x, y, { size: 7, color: gris });
-    texto(valor, x, y - 14, { size: 12, bold: true, color: azul });
-  });
-  y -= 40;
+  function dibujarEncabezadoTabla() {
+    rect(MARGEN, y - ALTO_HEADER_TABLA, ANCHO_UTIL, ALTO_HEADER_TABLA, { fill: AZUL });
+    let x = MARGEN;
+    for (const col of COLUMNAS) {
+      texto(col.titulo, x + (col.alinear === "der" ? -6 : 8), y - 15, {
+        size: 8,
+        bold: true,
+        color: BLANCO,
+        derecha: col.alinear === "der",
+        ancho: col.alinear === "der" ? col.ancho : undefined,
+      });
+      x += col.ancho;
+    }
+    y -= ALTO_HEADER_TABLA;
+  }
 
-  linea(y);
-  y -= 20;
+  function nuevaPagina(conEncabezadoCompleto: boolean) {
+    page = pdf.addPage([ANCHO, ALTO]);
+    paginas.push(page);
+    dibujarEncabezado(conEncabezadoCompleto);
+    if (!conEncabezadoCompleto) y -= 4;
+    dibujarEncabezadoTabla();
+  }
 
-  // Tabla de ingredientes
-  texto(`Ingredientes (${ingredientes.length})`, MARGEN, y, { size: 11, bold: true });
-  y -= 16;
-
-  const columnas = [
-    { titulo: "Insumo", x: MARGEN },
-    { titulo: "Unidad", x: MARGEN + 190 },
-    { titulo: "Cant.", x: MARGEN + 245 },
-    { titulo: "Merma%", x: MARGEN + 300 },
-    { titulo: "Costo unit.", x: MARGEN + 355 },
-    { titulo: "Costo total", x: MARGEN + 435 },
-  ];
-
-  columnas.forEach((c) => texto(c.titulo, c.x, y, { size: 8, bold: true, color: gris }));
-  y -= 4;
-  linea(y);
-  y -= 14;
+  // --- Contenido ---
+  dibujarEncabezado(true);
+  dibujarTarjetas();
+  dibujarEncabezadoTabla();
 
   if (ingredientes.length === 0) {
-    texto("Todavía no tiene ingredientes.", MARGEN, y, { size: 9, color: gris });
-    y -= 16;
+    texto("Todavía no tiene ingredientes.", MARGEN + 8, y - 14, { size: 9, color: GRIS });
+    y -= ALTO_FILA_TABLA;
   }
 
-  for (const ing of ingredientes) {
-    nuevaPaginaSiHaceFalta(20);
-    texto(ing.descripcion.slice(0, 42), columnas[0].x, y, { size: 9 });
-    texto(ing.unidad_codigo ?? "—", columnas[1].x, y, { size: 9 });
-    texto(String(ing.cantidad), columnas[2].x, y, { size: 9 });
-    texto(`${(ing.merma_pct * 100).toFixed(1)}%`, columnas[3].x, y, { size: 9 });
-    texto(money(ing.costo_unitario), columnas[4].x, y, { size: 9 });
-    texto(money(ing.costo_linea), columnas[5].x, y, { size: 9 });
-    y -= 16;
-  }
+  ingredientes.forEach((ing, idx) => {
+    if (y - ALTO_FILA_TABLA < 90) {
+      nuevaPagina(false);
+    }
+    if (idx % 2 === 0) {
+      rect(MARGEN, y - ALTO_FILA_TABLA, ANCHO_UTIL, ALTO_FILA_TABLA, { fill: FILA_PAR });
+    }
 
-  y -= 10;
-  nuevaPaginaSiHaceFalta(180);
-  linea(y);
-  y -= 20;
+    const cantReal = ing.cantidad / (1 - Math.min(ing.merma_pct, 0.949));
+    const filaValores = [
+      ing.descripcion.length > 32 ? ing.descripcion.slice(0, 31) + "…" : ing.descripcion,
+      ing.tipo_item === "subreceta" ? "Subreceta" : "Insumo",
+      formatCantidad(ing.cantidad),
+      ing.unidad_codigo ?? "—",
+      ing.merma_pct > 0 ? `${Math.round(ing.merma_pct * 100)}%` : "—",
+      formatCantidad(cantReal),
+      money(ing.costo_unitario),
+      money(ing.costo_linea),
+    ];
 
-  // Resumen de costos
-  texto("Resumen de costos", MARGEN, y, { size: 11, bold: true });
-  y -= 18;
-
-  const filasResumen: [string, string][] = [
-    ["Costo de ingredientes", money(costoBaseSinMerma)],
-    ["Costo por merma", money(costoPorMerma)],
-    ["Desvío de mercancía", `${(receta.desvio_pct * 100).toFixed(1)}% · ${money(desvioMonto)}`],
-    ["Costo total del plato", money(receta.costo_total)],
-    ["Costo por porción", money(receta.costo_porcion)],
-    ["Food cost objetivo", `${(foodCostObjetivo * 100).toFixed(0)}%`],
-  ];
-  if (resumen) {
-    filasResumen.push(
-      ["Precio sugerido", money(resumen.precioSugerido)],
-      ["Food cost real", `${(resumen.foodCost * 100).toFixed(2)}%`],
-      ["Utilidad", money(resumen.utilidad)],
-      ["Margen bruto", `${(resumen.margenBruto * 100).toFixed(2)}%`]
-    );
-  }
-
-  filasResumen.forEach(([label, valor]) => {
-    nuevaPaginaSiHaceFalta(16);
-    texto(label, MARGEN, y, { size: 9, color: gris });
-    texto(valor, MARGEN + 250, y, { size: 9, bold: true });
-    y -= 15;
+    let x = MARGEN;
+    filaValores.forEach((valor, i) => {
+      const col = COLUMNAS[i];
+      texto(valor, x + (col.alinear === "der" ? -6 : 8), y - 13, {
+        size: 8.5,
+        derecha: col.alinear === "der",
+        ancho: col.alinear === "der" ? col.ancho : undefined,
+      });
+      x += col.ancho;
+    });
+    y -= ALTO_FILA_TABLA;
   });
 
-  texto(`Generado el ${new Date().toLocaleString("es-CO")}`, MARGEN, 40, { size: 7, color: gris });
+  if (y - 26 < 60) {
+    nuevaPagina(false);
+  }
+  y -= 8;
+  page.drawLine({ start: { x: MARGEN, y }, end: { x: ANCHO - MARGEN, y }, thickness: 0.7, color: GRIS_CLARO });
+  y -= 18;
+  const totalTexto = "COSTO TOTAL DE LA PREPARACIÓN";
+  const totalValor = money(costoTotalPreparacion);
+  texto(totalTexto, MARGEN, y, { size: 9.5, bold: true, color: NEGRO });
+  const wTotal = fontBold.widthOfTextAtSize(totalValor, 10.5);
+  page.drawText(totalValor, { x: ANCHO - MARGEN - wTotal, y, size: 10.5, font: fontBold, color: AZUL });
+
+  // Pie de página (se agrega al final, ya con el total de páginas conocido)
+  const totalPaginas = paginas.length;
+  const sedeTexto = `${receta.sede_nombre ?? "Gastro Central"} · Recetario interno — GastroCore`;
+  paginas.forEach((p, idx) => {
+    p.drawLine({ start: { x: MARGEN, y: 44 }, end: { x: ANCHO - MARGEN, y: 44 }, thickness: 0.5, color: GRIS_CLARO });
+    p.drawText(sedeTexto, { x: MARGEN, y: 32, size: 7.5, font, color: GRIS });
+    const txtPagina = `Página ${idx + 1} de ${totalPaginas}`;
+    const wPagina = font.widthOfTextAtSize(txtPagina, 7.5);
+    p.drawText(txtPagina, { x: ANCHO - MARGEN - wPagina, y: 32, size: 7.5, font, color: GRIS });
+  });
 
   return pdf.save();
 }
