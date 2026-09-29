@@ -3,7 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 import { useFormState, useFormStatus } from "react-dom";
 import Link from "next/link";
-import { crearRecetaCompleta, type EstadoReceta } from "./actions";
+import { crearRecetaCompleta, actualizarRecetaCompleta, type EstadoReceta } from "./actions";
 import { calcularResumenCosteo, precioSugerido } from "@/lib/costeo";
 import { CampoNumero } from "@/components/CampoNumero";
 import SearchableSelect from "@/components/SearchableSelect";
@@ -26,25 +26,35 @@ type ConfigCosteo = {
   iva: number;
 };
 
+type FamiliaOpcion = { id: string; nombre: string };
+
+/** Valores con los que arranca el formulario cuando se usa para EDITAR una
+ * receta existente (viene de RecetaDetallePage → /recetas/nueva?edit=ID),
+ * igual que GastroCore reutiliza la pantalla "Nueva receta" para editar. */
+type ValoresIniciales = {
+  nombre: string;
+  rendimiento: number;
+  unidadRendimiento: string;
+  desvioPct: number;
+  familiaId: string;
+  precioReal: number;
+  lineas: Linea[];
+};
+
 const money = (n: number) =>
   "$" + (n || 0).toLocaleString("es-CO", { maximumFractionDigits: 0 });
 const pct = (n: number) => (n || 0).toFixed(2) + "%";
 const num = (n: number) => (n || 0).toLocaleString("es-CO", { maximumFractionDigits: 2 });
 
-function BotonGuardar() {
+function BotonGuardar({ esEdicion }: { esEdicion: boolean }) {
   const { pending } = useFormStatus();
+  const texto = esEdicion ? "Actualizar receta" : "Crear receta";
   return (
     <button type="submit" disabled={pending} className="btn-primary w-full disabled:opacity-50">
-      {pending ? "Guardando…" : "Guardar receta"}
+      {pending ? "Guardando…" : texto}
     </button>
   );
 }
-
-type FamiliaConSubfamilias = {
-  id: string;
-  nombre: string;
-  subfamilias: { id: string; nombre: string }[];
-};
 
 export default function RecetaForm({
   sedeId,
@@ -52,25 +62,32 @@ export default function RecetaForm({
   items,
   unidades,
   configCosteo,
+  recetaId,
+  valoresIniciales,
 }: {
   sedeId: string;
-  familias: FamiliaConSubfamilias[];
+  familias: FamiliaOpcion[];
   items: ItemOpt[];
   unidades: { codigo: string; nombre: string }[];
   configCosteo: ConfigCosteo;
+  recetaId?: string;
+  valoresIniciales?: ValoresIniciales;
 }) {
-  const [estado, formAction] = useFormState<EstadoReceta, FormData>(crearRecetaCompleta, {
+  const esEdicion = Boolean(recetaId);
+  const accion = esEdicion ? actualizarRecetaCompleta : crearRecetaCompleta;
+  const [estado, formAction] = useFormState<EstadoReceta, FormData>(accion, {
     error: null,
   });
 
-  const [nombre, setNombre] = useState("");
-  const [rendimiento, setRendimiento] = useState(1);
-  const [unidadRendimiento, setUnidadRendimiento] = useState("UND");
-  const [desvioPct, setDesvioPct] = useState(0);
-  const [familiaId, setFamiliaId] = useState("");
-  const [subfamiliaId, setSubfamiliaId] = useState("");
-  const [precioReal, setPrecioReal] = useState(0);
-  const [lineas, setLineas] = useState<Linea[]>([]);
+  const [nombre, setNombre] = useState(valoresIniciales?.nombre ?? "");
+  const [rendimiento, setRendimiento] = useState(valoresIniciales?.rendimiento ?? 1);
+  const [unidadRendimiento, setUnidadRendimiento] = useState(
+    valoresIniciales?.unidadRendimiento ?? "UND"
+  );
+  const [desvioPct, setDesvioPct] = useState(valoresIniciales?.desvioPct ?? 0);
+  const [familiaId, setFamiliaId] = useState(valoresIniciales?.familiaId ?? "");
+  const [precioReal, setPrecioReal] = useState(valoresIniciales?.precioReal ?? 0);
+  const [lineas, setLineas] = useState<Linea[]>(valoresIniciales?.lineas ?? []);
   const [errores, setErrores] = useState<string[]>([]);
   const cantRefs = useRef<Record<number, HTMLInputElement | null>>({});
 
@@ -79,16 +96,6 @@ export default function RecetaForm({
     items.forEach((i) => (m[i.id] = i));
     return m;
   }, [items]);
-
-  const subfamiliasDeFamilia = useMemo(
-    () => familias.find((f) => f.id === familiaId)?.subfamilias ?? [],
-    [familias, familiaId]
-  );
-
-  const onCambiarFamilia = (id: string) => {
-    setFamiliaId(id);
-    setSubfamiliaId("");
-  };
 
   const filas = useMemo(() => {
     return lineas.map((l) => {
@@ -161,13 +168,13 @@ export default function RecetaForm({
 
   return (
     <form action={formAction} onSubmit={alEnviar} className="flex flex-col gap-4">
+      {esEdicion && <input type="hidden" name="id" value={recetaId} />}
       <input type="hidden" name="sede_id" value={sedeId} />
       <input type="hidden" name="nombre" value={nombre} />
       <input type="hidden" name="rendimiento" value={rendimiento} />
       <input type="hidden" name="unidad_rendimiento_codigo" value={unidadRendimiento} />
       <input type="hidden" name="desvio_pct" value={desvioPct} />
       <input type="hidden" name="familia_id" value={familiaId} />
-      <input type="hidden" name="subfamilia_id" value={subfamiliaId} />
       <input type="hidden" name="precio_real" value={precioReal} />
       <input type="hidden" name="ingredientes_json" value={ingredientesJson} />
 
@@ -232,32 +239,17 @@ export default function RecetaForm({
             Administrar familias
           </Link>
         </div>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <label className="block">
-            <span className="mb-1 block text-xs font-medium text-slate-500">Familia (categoría de la carta)</span>
-            <SearchableSelect
-              value={familiaId}
-              onChange={onCambiarFamilia}
-              options={familias.map((f) => ({ value: f.id, label: f.nombre }))}
-              placeholder="Elige la familia…"
-              searchPlaceholder="Buscar familia…"
-              clearLabel="Sin clasificar"
-            />
-          </label>
-          <label className="block">
-            <span className="mb-1 block text-xs font-medium text-slate-500">Subfamilia (opcional)</span>
-            <SearchableSelect
-              value={subfamiliaId}
-              onChange={setSubfamiliaId}
-              options={subfamiliasDeFamilia.map((s) => ({ value: s.id, label: s.nombre }))}
-              placeholder={familiaId ? "Elige la subfamilia…" : "Primero elegí la familia"}
-              searchPlaceholder="Buscar subfamilia…"
-              clearLabel="Sin subfamilia"
-              disabled={!familiaId}
-              emptyLabel="Esta familia no tiene subfamilias"
-            />
-          </label>
-        </div>
+        <label className="block max-w-md">
+          <span className="mb-1 block text-xs font-medium text-slate-500">Familia (categoría de la carta)</span>
+          <SearchableSelect
+            value={familiaId}
+            onChange={setFamiliaId}
+            options={familias.map((f) => ({ value: f.id, label: f.nombre }))}
+            placeholder="Elige la familia…"
+            searchPlaceholder="Buscar familia…"
+            clearLabel="Sin clasificar"
+          />
+        </label>
         {familias.length === 0 && (
           <p className="mt-2 text-xs text-slate-400">
             Aún no hay familias de platos de venta.{" "}
@@ -447,7 +439,7 @@ export default function RecetaForm({
             </p>
           )}
 
-          <BotonGuardar />
+          <BotonGuardar esEdicion={esEdicion} />
         </aside>
       </div>
     </form>
