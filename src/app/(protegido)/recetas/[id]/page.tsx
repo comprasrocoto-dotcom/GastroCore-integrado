@@ -1,25 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { obtenerReceta } from "@/lib/data/recetas";
-import { listarFamiliasConSubfamilias } from "@/lib/data/familias";
-import {
-  listarIngredientesDeReceta,
-  listarInsumosParaPicker,
-  listarSubrecetasParaPicker,
-} from "@/lib/data/ingredientes";
+import { listarIngredientesDeReceta } from "@/lib/data/ingredientes";
 import { calcularResumenCosteo } from "@/lib/costeo";
 import { obtenerConfiguracionCosteo } from "@/lib/data/configuracion";
 import { obtenerFichaPorReceta } from "@/lib/data/fichas";
 import { listarHistorialReceta } from "@/lib/data/historial";
 import SubidaFoto from "@/components/SubidaFoto";
-import FilaAgregarIngrediente from "@/components/FilaAgregarIngrediente";
-import {
-  actualizarReceta,
-  actualizarFotoReceta,
-  agregarIngredienteReceta,
-  eliminarIngredienteReceta,
-  guardarFicha,
-} from "../actions";
+import { actualizarFotoReceta, guardarFicha } from "../actions";
 
 const CHIP_SEMAFORO: Record<string, string> = {
   verde: "chip-success",
@@ -54,30 +42,15 @@ export default async function RecetaDetallePage({
   const receta = await obtenerReceta(params.id);
   if (!receta) notFound();
 
-  const [ingredientes, insumos, subrecetas, familiasTodas, ficha, historial, config] = await Promise.all([
+  const [ingredientes, ficha, historial, config] = await Promise.all([
     listarIngredientesDeReceta(receta.id),
-    listarInsumosParaPicker(receta.sede_id),
-    listarSubrecetasParaPicker(receta.sede_id),
-    listarFamiliasConSubfamilias(receta.sede_id),
     obtenerFichaPorReceta(receta.id),
     listarHistorialReceta(receta.id),
     obtenerConfiguracionCosteo(receta.sede_id),
   ]);
 
-  // Igual que antes (listarFamiliasParaPicker filtraba solo activas), y acá
-  // además necesitamos las subfamilias anidadas para el select de
-  // "Edición avanzada".
-  const familias = familiasTodas
-    .filter((f) => f.activo)
-    .map((f) => ({ ...f, subfamilias: f.subfamilias.filter((s) => s.activo) }));
-
-  const siguienteOrden = ingredientes.length
-    ? Math.max(...ingredientes.map((i) => i.orden)) + 1
-    : 1;
-
   // El FC objetivo viene de la configuración de la sede; el IVA usa el de
-  // la propia receta (`recetas.iva`, editable en "Edición avanzada" más
-  // abajo) — ya existía en la base pero antes no se usaba en esta cuenta.
+  // la propia receta (`recetas.iva`).
   const resumen = receta.precio_real
     ? calcularResumenCosteo(receta.costo_porcion, receta.precio_real, {
         fcObjetivo: config.fcObjetivo,
@@ -126,9 +99,9 @@ export default async function RecetaDetallePage({
           <a href="#ficha-tecnica" className="btn-secondary">
             📋 Ficha técnica
           </a>
-          <a href="#editar" className="btn-primary">
+          <Link href={`/recetas/nueva?edit=${receta.id}&sede=${receta.sede_id}`} className="btn-primary">
             ✎ Editar receta
-          </a>
+          </Link>
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-3">
           <SubidaFoto
@@ -181,12 +154,7 @@ export default async function RecetaDetallePage({
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Familia</p>
-                <p className="mt-1 text-sm font-medium">
-                  {receta.familia_nombre ?? "General"}
-                  {receta.subfamilia_nombre && (
-                    <span className="text-slate-400"> → {receta.subfamilia_nombre}</span>
-                  )}
-                </p>
+                <p className="mt-1 text-sm font-medium">{receta.familia_nombre ?? "General"}</p>
               </div>
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Rendimiento</p>
@@ -205,6 +173,9 @@ export default async function RecetaDetallePage({
             </div>
           </section>
 
+          {/* Solo lectura: los ingredientes se editan desde "Editar receta"
+              (la misma pantalla de creación, reutilizada), igual que
+              GastroCore — acá no hay alta/baja de líneas suelta. */}
           <section className="card overflow-hidden">
             <div
               className="flex items-center justify-between border-b px-4 py-3"
@@ -223,7 +194,6 @@ export default async function RecetaDetallePage({
                     <th className="text-right">Cant. real</th>
                     <th className="text-right">Costo unit.</th>
                     <th className="text-right">Costo total</th>
-                    <th></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -238,30 +208,15 @@ export default async function RecetaDetallePage({
                       </td>
                       <td className="text-right fin-value">{money(i.costo_unitario)}</td>
                       <td className="text-right fin-value">{money(i.costo_linea)}</td>
-                      <td className="text-right">
-                        <form action={eliminarIngredienteReceta}>
-                          <input type="hidden" name="id" value={i.id} />
-                          <input type="hidden" name="receta_id" value={recetaId} />
-                          <button type="submit" className="btn-danger px-2 py-1 text-xs">
-                            Quitar
-                          </button>
-                        </form>
-                      </td>
                     </tr>
                   ))}
                   {ingredientes.length === 0 && (
                     <tr>
-                      <td colSpan={8} className="px-4 py-6 text-center text-slate-400">
+                      <td colSpan={7} className="px-4 py-6 text-center text-slate-400">
                         Todavía no tiene ingredientes.
                       </td>
                     </tr>
                   )}
-                  <FilaAgregarIngrediente
-                    formId="agregar-ing-receta"
-                    variant="receta"
-                    insumos={insumos}
-                    subrecetas={subrecetas}
-                  />
                 </tbody>
                 <tfoot>
                   <tr>
@@ -269,16 +224,10 @@ export default async function RecetaDetallePage({
                       Costo de ingredientes
                     </td>
                     <td className="px-4 py-2 text-right fin-value font-semibold">{money(costoConMerma)}</td>
-                    <td></td>
                   </tr>
                 </tfoot>
               </table>
             </div>
-            <form id="agregar-ing-receta" action={agregarIngredienteReceta}>
-              <input type="hidden" name="sede_id" value={recetaSedeId} />
-              <input type="hidden" name="receta_id" value={recetaId} />
-              <input type="hidden" name="orden" value={siguienteOrden} />
-            </form>
           </section>
 
           {historial.length > 0 && (
@@ -446,119 +395,6 @@ export default async function RecetaDetallePage({
 
           <button type="submit" className="btn-secondary self-start">
             Guardar ficha técnica
-          </button>
-        </form>
-      </section>
-
-      <section id="editar" className="flex flex-col gap-4 border-t pt-6" style={{ borderColor: "var(--line)" }}>
-        <h2 className="text-sm font-semibold text-slate-700">Edición avanzada</h2>
-
-        <form action={actualizarReceta} className="card flex flex-wrap items-end gap-3 p-3">
-          <input type="hidden" name="id" value={receta.id} />
-          <div className="flex flex-col gap-1">
-            <label className="text-xs" style={{ color: "var(--muted)" }}>Nombre</label>
-            <input name="nombre" defaultValue={receta.nombre} className={inputClase} />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-xs" style={{ color: "var(--muted)" }}>Familia</label>
-            <select
-              name="familia_id"
-              defaultValue={receta.familia_id ?? ""}
-              className={inputClase}
-            >
-              <option value="">— Sin familia —</option>
-              {familias.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.nombre}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-xs" style={{ color: "var(--muted)" }}>Subfamilia</label>
-            <select
-              name="subfamilia_id"
-              defaultValue={receta.subfamilia_id ?? ""}
-              className={inputClase}
-            >
-              <option value="">— Sin subfamilia —</option>
-              {familias.map((f) =>
-                f.subfamilias.length > 0 ? (
-                  <optgroup key={f.id} label={f.nombre}>
-                    {f.subfamilias.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.nombre}
-                      </option>
-                    ))}
-                  </optgroup>
-                ) : null
-              )}
-            </select>
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-xs" style={{ color: "var(--muted)" }}>Rendimiento</label>
-            <input
-              name="rendimiento"
-              type="number"
-              step="0.01"
-              defaultValue={receta.rendimiento ?? ""}
-              className={`w-24 ${inputClase}`}
-            />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-xs" style={{ color: "var(--muted)" }}>Unidad</label>
-            <input
-              name="unidad_rendimiento_codigo"
-              defaultValue={receta.unidad_rendimiento_codigo ?? ""}
-              className={`w-20 ${inputClase}`}
-            />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-xs" style={{ color: "var(--muted)" }}>Precio real</label>
-            <input
-              name="precio_real"
-              type="number"
-              step="0.01"
-              defaultValue={receta.precio_real ?? ""}
-              className={`w-28 ${inputClase}`}
-            />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-xs" style={{ color: "var(--muted)" }}>IVA %</label>
-            <input
-              name="iva"
-              type="number"
-              step="0.01"
-              defaultValue={(receta.iva * 100).toFixed(2)}
-              className={`w-20 ${inputClase}`}
-            />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-xs" style={{ color: "var(--muted)" }}>Merma %</label>
-            <input
-              name="merma_pct"
-              type="number"
-              step="0.01"
-              defaultValue={(receta.merma_pct * 100).toFixed(2)}
-              className={`w-20 ${inputClase}`}
-            />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-xs" style={{ color: "var(--muted)" }}>Desvío %</label>
-            <input
-              name="desvio_pct"
-              type="number"
-              step="0.01"
-              defaultValue={(receta.desvio_pct * 100).toFixed(2)}
-              className={`w-20 ${inputClase}`}
-            />
-          </div>
-          <label className="flex items-center gap-1 text-sm text-slate-600">
-            <input type="checkbox" name="activo" defaultChecked={receta.activo} />
-            Activa
-          </label>
-          <button type="submit" className="btn-secondary">
-            Guardar
           </button>
         </form>
       </section>
