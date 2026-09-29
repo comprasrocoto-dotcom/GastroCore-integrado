@@ -685,3 +685,90 @@ adelante.**
 No se modificó ni se tocó el GastroCore viejo (`gastro-core.vercel.app`)
 en ningún momento — todo esto se comparó solo mirando esa pantalla desde
 el navegador.
+
+
+## PDF de receta rediseñado, exportar recetario a Excel y botones de Recetario (29/09)
+
+Mariluz pidió tres cosas relacionadas con el Recetario: (1) que el PDF que
+se descarga de cada receta tenga el mismo diseño que ya usan en el
+GastroCore antiguo (subió como referencia el PDF de "TIRADITO TRES
+SABORES"), (2) poder descargar el recetario completo de una sede en un
+solo Excel, y (3) que la pantalla de Recetario tenga los mismos botones y
+en el mismo orden que la pantalla real ("Familias | Panel ejecutivo | Ver
+recetario completo | Exportar | + Nueva receta").
+
+**PDF de receta — rediseño completo.** El botón "↓ Descargar PDF" de cada
+receta ahora genera un PDF con el mismo formato que el de referencia:
+franja superior en azul marino con el nombre de la receta, familia, sede y
+fecha; cuatro tarjetas con Porciones, Costo del plato, Precio real y Food
+cost; la tabla de ingredientes con las mismas ocho columnas (insumo,
+unidad, cantidad, merma, costo unitario, costo total, etc.) con renglones
+alternados para que se lea fácil; una fila de "COSTO TOTAL DE LA
+PREPARACIÓN" al final; y el nombre de la sede junto con la numeración de
+página al pie de cada hoja. Los números y fórmulas son exactamente los
+mismos que ya se calculan en el resto de Gastro Central — el PDF solo
+cambió de diseño, no de contenido.
+
+**Exportar recetario a Excel — pantalla nueva.** Se agregó
+`/recetas/exportar`, con el mismo diseño que Mariluz mandó de ejemplo: una
+tarjeta "Exportar a Excel" con dos casilleros — "Incluir fichas técnicas"
+y "Solo activas" — y un botón "↓ Descargar Excel". El archivo que se
+descarga trae cuatro hojas: Recetas, Ingredientes de recetas, Subrecetas e
+Ingredientes de subrecetas, con los mismos costos y fórmulas que se ven en
+`/recetas` y `/subrecetas` (nada se recalcula distinto). Si se tilda
+"Incluir fichas técnicas", se agrega el texto de preparación, emplatado y
+notas de cada receta. Se dejó afuera la opción de exportar todo el
+recetario en un solo PDF: Mariluz mandó después una captura mostrando que
+la tarjeta de exportación es solo para Excel, y que para el PDF de una
+receta puntual ya está el botón "↓ PDF" en el detalle de cada una — así
+quedó reflejado en la pantalla, con un aviso abajo que lo aclara. Si más
+adelante quiere también un PDF de todo el recetario junto, se puede
+agregar como una tarea aparte.
+
+**Botones del Recetario.** Se agregaron dos botones nuevos en el encabezado
+de `/recetas`, en el orden de la pantalla real: "📊 Panel ejecutivo" (antes
+del botón de "Ver recetario completo") y "↓ Exportar" (que lleva a la
+pantalla de exportar a Excel de arriba), quedando: Familias → Panel
+ejecutivo → Ver recetario completo → Exportar → + Nueva receta.
+
+**Panel ejecutivo — pantalla placeholder.** El botón "📊 Panel ejecutivo"
+lleva a una pantalla nueva (`/panel`) que por ahora solo explica, en texto
+simple, que está pendiente: antes de construirla necesitamos que Mariluz
+defina qué indicadores debe mostrar (por ejemplo food cost promedio,
+recetas fuera de margen, evolución de costos por familia) y con qué se
+comparan. No se inventó ningún indicador ni cálculo — es la misma
+pregunta pendiente que ya estaba anotada desde el mapeo del 21/09.
+
+**Un problema técnico que apareció y ya se resolvió.** Al subir la ruta de
+descarga del Excel, el sitio quedó con un error de compilación (un detalle
+de tipos de TypeScript en cómo se arma el archivo antes de mandarlo al
+navegador) — el sitio no llegó a desplegarse con ese cambio. Se
+diagnosticó revisando el registro de errores de Vercel, se corrigió con el
+mismo patrón que ya se usa en la descarga del PDF, y se confirmó que el
+siguiente despliegue quedó en estado "Ready" (listo) antes de dar por
+terminada la tarea. Se probaron en el navegador, contra los datos reales
+de la sede Rocoto (87 recetas), tanto la descarga del PDF de "TIRADITO
+TRES SABORES" como la descarga del Excel del recetario completo, y ambas
+funcionan.
+
+**Nota sobre el detalle de ingredientes en el PDF.** Como ya está anotado
+más arriba en este mismo archivo, 88 de las 90 recetas reales migradas
+todavía no tienen cargado el detalle línea por línea de sus ingredientes
+(solo el costo total). Mientras esa migración pendiente no se haga, el PDF
+de esas recetas va a mostrar la tabla de ingredientes vacía, aunque el
+costo total y los demás números salgan bien — no es un error del PDF, es
+el mismo estado de los datos que ya se ve en el resto de la aplicación.
+
+**Lo que sigue pendiente de confirmar con Mariluz:**
+
+1. Qué indicadores debe mostrar el Panel ejecutivo y con qué se comparan
+   (sigue sin definirse).
+2. Si además del Excel quiere también la opción de descargar todo el
+   recetario junto en un solo PDF, o si el botón de PDF por receta le
+   alcanza.
+3. Cuándo se encara la migración del detalle de ingredientes de las 88
+   recetas pendientes (afecta tanto la edición de recetas como el
+   contenido del PDF y del Excel).
+
+No se modificó ni se tocó el GastroCore viejo (`gastro-core.vercel.app`)
+en ningún momento.
