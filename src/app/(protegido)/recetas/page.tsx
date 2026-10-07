@@ -86,7 +86,7 @@ export default async function RecetasPage({
       if (!foodcostFiltro) return true;
       if (!r.precio_real) return false;
       const fc = calcularResumenCosteo(r.costo_porcion, r.precio_real, {
-        fcObjetivo: config.fcObjetivo,
+        fcObjetivo: r.familia_fc_objetivo ?? config.fcObjetivo,
         iva: r.iva,
       }).semaforo;
       return fc === foodcostFiltro;
@@ -102,7 +102,7 @@ export default async function RecetasPage({
     .filter((r) => r.precio_real)
     .map((r) =>
       calcularResumenCosteo(r.costo_porcion, r.precio_real as number, {
-        fcObjetivo: config.fcObjetivo,
+        fcObjetivo: r.familia_fc_objetivo ?? config.fcObjetivo,
         iva: r.iva,
       })
     );
@@ -451,7 +451,7 @@ function TablaRecetas({
           {recetas.map((r) => {
             const resumen = r.precio_real
               ? calcularResumenCosteo(r.costo_porcion, r.precio_real, {
-                  fcObjetivo: config.fcObjetivo,
+                  fcObjetivo: r.familia_fc_objetivo ?? config.fcObjetivo,
                   iva: r.iva,
                 })
               : null;
