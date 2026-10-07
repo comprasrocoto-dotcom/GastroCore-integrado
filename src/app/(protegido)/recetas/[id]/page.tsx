@@ -9,6 +9,14 @@ import { listarHistorialReceta } from "@/lib/data/historial";
 import SubidaFoto from "@/components/SubidaFoto";
 import { actualizarFotoReceta, guardarFicha } from "../actions";
 
+// Esta pantalla se abre siempre justo después de crear/editar la receta
+// (redirect desde el formulario). Sin esto, Next a veces sirve una versión
+// en caché de la lista de ingredientes de la visita anterior a esa misma
+// URL, aunque el costo total (que viene de otra consulta) ya se vea
+// actualizado — se fuerza a que la página siempre se renderice de nuevo
+// con los datos frescos de Supabase.
+export const dynamic = "force-dynamic";
+
 const CHIP_SEMAFORO: Record<string, string> = {
   verde: "chip-success",
   amarillo: "chip-warning",
