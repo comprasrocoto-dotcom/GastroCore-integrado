@@ -1,7 +1,7 @@
 import { getUsuarioActual } from "@/lib/auth/usuario-actual";
 import { getSedesVisibles, resolverSedeActiva } from "@/lib/data/sedes";
-import { obtenerConfiguracionCosteo } from "@/lib/data/configuracion";
-import { guardarConfiguracion } from "./actions";
+import { obtenerConfiguracionCosteo, obtenerClavesRecetario } from "@/lib/data/configuracion";
+import { guardarConfiguracion, guardarClaves } from "./actions";
 
 const inputClase =
   "rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-[#1E3A5F]";
@@ -29,6 +29,7 @@ export default async function ConfiguracionPage({
   }
 
   const config = await obtenerConfiguracionCosteo(sedeActiva.id);
+  const claves = await obtenerClavesRecetario(sedeActiva.id);
 
   return (
     <div className="flex flex-col gap-6">
@@ -105,6 +106,55 @@ export default async function ConfiguracionPage({
 
         <button type="submit" className="btn-primary self-start">
           Guardar
+        </button>
+      </form>
+
+      <form
+        action={guardarClaves}
+        className="card flex flex-col gap-4 p-4"
+        style={{ maxWidth: 480 }}
+      >
+        <input type="hidden" name="sede_id" value={sedeActiva.id} />
+
+        <div>
+          <h2 className="text-sm font-semibold">Claves del Recetario (Bar / Cocina)</h2>
+          <p className="mt-1 text-xs" style={{ color: "var(--muted)" }}>
+            Para que cada puesto (Bar o Cocina) entre al Recetario y vea solo las recetas de su
+            área (según el campo "Área" de cada familia, en la pantalla Familias). Dejá un campo
+            vacío para que esa área quede abierta sin clave.
+          </p>
+        </div>
+
+        <label className="flex flex-col gap-1">
+          <span className="text-xs font-medium uppercase tracking-wide text-slate-500">
+            Clave de Bar
+          </span>
+          <input
+            name="clave_bar"
+            type="text"
+            inputMode="numeric"
+            placeholder="ej. 1234"
+            defaultValue={claves.bar ?? ""}
+            className={inputClase}
+          />
+        </label>
+
+        <label className="flex flex-col gap-1">
+          <span className="text-xs font-medium uppercase tracking-wide text-slate-500">
+            Clave de Cocina
+          </span>
+          <input
+            name="clave_cocina"
+            type="text"
+            inputMode="numeric"
+            placeholder="ej. 5678"
+            defaultValue={claves.cocina ?? ""}
+            className={inputClase}
+          />
+        </label>
+
+        <button type="submit" className="btn-primary self-start">
+          Guardar claves
         </button>
       </form>
     </div>
