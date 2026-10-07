@@ -57,11 +57,13 @@ export default async function RecetaDetallePage({
     obtenerConfiguracionCosteo(receta.sede_id),
   ]);
 
-  // El FC objetivo viene de la configuración de la sede; el IVA usa el de
-  // la propia receta (`recetas.iva`).
+  // El FC objetivo usa el propio de la familia de la receta si tiene uno
+  // cargado (pantalla Familias); si no, el de la configuración de la sede.
+  // El IVA usa el de la propia receta (`recetas.iva`).
+  const fcObjetivoEfectivo = receta.familia_fc_objetivo ?? config.fcObjetivo;
   const resumen = receta.precio_real
     ? calcularResumenCosteo(receta.costo_porcion, receta.precio_real, {
-        fcObjetivo: config.fcObjetivo,
+        fcObjetivo: fcObjetivoEfectivo,
         iva: receta.iva,
       })
     : null;
@@ -300,8 +302,13 @@ export default async function RecetaDetallePage({
               <span>{money(receta.costo_porcion)}</span>
             </div>
             <div className="ticket-row">
-              <span>Food cost objetivo</span>
-              <span>{(config.fcObjetivo * 100).toFixed(0)}%</span>
+              <span>
+                Food cost objetivo
+                {receta.familia_fc_objetivo !== null && (
+                  <span className="ml-1 text-[10px] text-slate-400">(familia)</span>
+                )}
+              </span>
+              <span>{(fcObjetivoEfectivo * 100).toFixed(0)}%</span>
             </div>
             {resumen ? (
               <>
