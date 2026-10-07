@@ -20,6 +20,7 @@ export default function RecetarioExplorador({ items }: { items: RecetarioItem[] 
   const [seccion, setSeccion] = useState<Seccion>("todas");
   const [detalle, setDetalle] = useState<RecetarioDetalle | null>(null);
   const [cargando, setCargando] = useState<string | null>(null);
+  const [fotoAmpliada, setFotoAmpliada] = useState<string | null>(null);
 
   const categorias = useMemo(() => {
     const mapa = new Map<string, number>();
@@ -155,8 +156,19 @@ export default function RecetarioExplorador({ items }: { items: RecetarioItem[] 
             onClick={(e) => e.stopPropagation()}
           >
             {detalle.foto_url && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={detalle.foto_url} alt="" className="h-48 w-full object-cover" />
+              <div className="relative h-48 w-full bg-slate-100">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={detalle.foto_url} alt="" className="h-48 w-full object-contain" />
+                <button
+                  type="button"
+                  onClick={() => setFotoAmpliada(detalle.foto_url)}
+                  className="absolute bottom-2 right-2 flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
+                  aria-label="Ver foto en grande"
+                  title="Ver foto en grande"
+                >
+                  🔍
+                </button>
+              </div>
             )}
             <div className="flex flex-col gap-4 p-5">
               <div className="flex items-start justify-between gap-3">
@@ -241,6 +253,28 @@ export default function RecetarioExplorador({ items }: { items: RecetarioItem[] 
               )}
             </div>
           </div>
+        </div>
+      )}
+
+      {fotoAmpliada && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4"
+          onClick={() => setFotoAmpliada(null)}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={fotoAmpliada}
+            alt=""
+            className="max-h-[90vh] max-w-[90vw] rounded-lg object-contain"
+          />
+          <button
+            type="button"
+            onClick={() => setFotoAmpliada(null)}
+            className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
+            aria-label="Cerrar"
+          >
+            ✕
+          </button>
         </div>
       )}
     </div>
