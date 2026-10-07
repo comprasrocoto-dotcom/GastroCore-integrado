@@ -772,6 +772,7 @@ el mismo estado de los datos que ya se ve en el resto de la aplicación.
 
 No se modificó ni se tocó el GastroCore viejo (`gastro-core.vercel.app`)
 en ningún momento.
+
 ## Selector de marca/sede más simple, arreglo de ingredientes en 0, zoom de foto en el Recetario y claves de Bar/Cocina (07/10)
 
 **Selector de marca/sede simplificado.** El selector del header repetía el
