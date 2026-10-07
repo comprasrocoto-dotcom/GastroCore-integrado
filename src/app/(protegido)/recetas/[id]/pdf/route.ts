@@ -24,9 +24,12 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
     obtenerConfiguracionCosteo(receta.sede_id),
   ]);
 
+  // Mismo criterio que `/recetas/[id]`: usa el food cost objetivo propio
+  // de la familia de la receta si tiene uno cargado; si no, el de
+  // Configuración (la sede).
   const resumen = receta.precio_real
     ? calcularResumenCosteo(receta.costo_porcion, receta.precio_real, {
-        fcObjetivo: config.fcObjetivo,
+        fcObjetivo: receta.familia_fc_objetivo ?? config.fcObjetivo,
         iva: receta.iva,
       })
     : null;
