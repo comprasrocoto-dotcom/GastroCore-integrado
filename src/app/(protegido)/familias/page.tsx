@@ -35,7 +35,7 @@ export default async function FamiliasPage({
         <h1 className="text-xl font-semibold">Familias y subfamilias</h1>
         <p className="mt-1 text-sm" style={{ color: "var(--muted)" }}>{familias.length} familias</p>
         <p className="mt-1 text-xs" style={{ color: "var(--muted)" }}>
-          El campo "Área (Recetario)" decide qué ve cada clave en el Recetario: Bar, Cocina o
+          El campo &quot;Área (Recetario)&quot; decide qué ve cada clave en el Recetario: Bar, Cocina o
           Ambas. Las familias sin asignar se muestran en las dos áreas.
         </p>
       </div>
