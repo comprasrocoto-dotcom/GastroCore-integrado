@@ -1,6 +1,7 @@
 import { getUsuarioActual } from "@/lib/auth/usuario-actual";
 import { getSedesVisibles, resolverSedeActiva } from "@/lib/data/sedes";
 import { listarFamiliasConSubfamilias } from "@/lib/data/familias";
+import { obtenerConfiguracionCosteo } from "@/lib/data/configuracion";
 import {
   crearFamilia,
   actualizarFamilia,
@@ -26,7 +27,12 @@ export default async function FamiliasPage({
     return <p style={{ color: "var(--muted)" }}>No hay ninguna sede disponible.</p>;
   }
 
-  const familias = await listarFamiliasConSubfamilias(sedeActiva.id);
+  const [familias, config] = await Promise.all([
+    listarFamiliasConSubfamilias(sedeActiva.id),
+    obtenerConfiguracionCosteo(sedeActiva.id),
+  ]);
+
+  const fcSedeTexto = `${(config.fcObjetivo * 100).toFixed(0)}%`;
 
   return (
     <div className="flex flex-col gap-6">
@@ -37,6 +43,11 @@ export default async function FamiliasPage({
         <p className="mt-1 text-xs" style={{ color: "var(--muted)" }}>
           El campo &quot;Área (Recetario)&quot; decide qué ve cada clave en el Recetario: Bar, Cocina o
           Ambas. Las familias sin asignar se muestran en las dos áreas.
+        </p>
+        <p className="mt-1 text-xs" style={{ color: "var(--muted)" }}>
+          El campo &quot;Food cost objetivo&quot; es opcional: si se deja vacío, esa familia usa el
+          food cost objetivo general de Configuración (hoy {fcSedeTexto}). Cargalo solo en las
+          familias que necesiten un objetivo distinto al general.
         </p>
       </div>
 
@@ -56,6 +67,20 @@ export default async function FamiliasPage({
             <option value="AMBAS">Ambas</option>
           </select>
         </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-xs" style={{ color: "var(--muted)" }}>
+            Food cost objetivo (opcional)
+          </label>
+          <input
+            name="fc_objetivo"
+            type="number"
+            step="0.01"
+            min="0.01"
+            max="99"
+            placeholder={`ej. 40 (sede: ${fcSedeTexto})`}
+            className={`w-44 ${inputClase}`}
+          />
+        </div>
         <button type="submit" className="btn-primary">
           Agregar
         </button>
@@ -69,6 +94,11 @@ export default async function FamiliasPage({
               <span className="text-sm font-normal text-slate-400">
                 ({f.subfamilias.length} subfamilias)
               </span>
+              {f.fcObjetivo !== null && (
+                <span className="ml-2 text-xs font-normal text-slate-400">
+                  · FC objetivo propio: {(f.fcObjetivo * 100).toFixed(0)}%
+                </span>
+              )}
             </summary>
 
             <form
@@ -91,6 +121,21 @@ export default async function FamiliasPage({
                   <option value="COCINA">Cocina</option>
                   <option value="AMBAS">Ambas</option>
                 </select>
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs" style={{ color: "var(--muted)" }}>
+                  Food cost objetivo (opcional)
+                </label>
+                <input
+                  name="fc_objetivo"
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  max="99"
+                  defaultValue={f.fcObjetivo !== null ? (f.fcObjetivo * 100).toFixed(2) : ""}
+                  placeholder={`sede: ${fcSedeTexto}`}
+                  className={`w-40 ${inputClase}`}
+                />
               </div>
               <label className="flex items-center gap-1 text-sm text-slate-600">
                 <input type="checkbox" name="activo" defaultChecked={f.activo} />
