@@ -14,6 +14,10 @@ export type FamiliaFila = {
   nombre: string;
   tipo: string | null;
   centrocosto: string | null;
+  /** Food cost objetivo propio de esta familia (fracción, ej. 0.4 = 40%).
+   * `null` = esta familia no tiene uno propio y usa el de Configuración
+   * (el de la sede), igual que el IVA por receta. */
+  fcObjetivo: number | null;
   activo: boolean;
   subfamilias: SubfamiliaFila[];
 };
@@ -26,7 +30,7 @@ export async function listarFamiliasConSubfamilias(
   const [{ data: familias }, { data: subfamilias }] = await Promise.all([
     supabase
       .from("familias")
-      .select("id, nombre, tipo, centrocosto, activo")
+      .select("id, nombre, tipo, centrocosto, fc_objetivo, activo")
       .eq("sede_id", sedeId)
       .order("nombre"),
     supabase
@@ -43,6 +47,7 @@ export async function listarFamiliasConSubfamilias(
     nombre: f.nombre as string,
     tipo: f.tipo as string | null,
     centrocosto: f.centrocosto as string | null,
+    fcObjetivo: f.fc_objetivo === null ? null : Number(f.fc_objetivo),
     activo: f.activo as boolean,
     subfamilias: (subfamilias ?? [])
       .filter((s) => s.familia_id === f.id)
