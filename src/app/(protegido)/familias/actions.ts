@@ -8,6 +8,21 @@ function textoOpcional(formData: FormData, campo: string): string | null {
   return valor || null;
 }
 
+/**
+ * Food cost objetivo propio de una familia, como porcentaje (0-100) en el
+ * campo del formulario. Vacío = `null` = esta familia usa el food cost
+ * objetivo general de Configuración, igual que siempre. Se guarda como
+ * fracción (ej. 40 → 0.4), igual que `guardarConfiguracion` en
+ * Configuración.
+ */
+function fcObjetivoOpcional(formData: FormData): number | null {
+  const valor = String(formData.get("fc_objetivo") ?? "").trim();
+  if (!valor) return null;
+  const pct = Number(valor);
+  if (!Number.isFinite(pct) || pct <= 0 || pct >= 100) return null;
+  return pct / 100;
+}
+
 export async function crearFamilia(formData: FormData) {
   const sedeId = String(formData.get("sede_id") ?? "");
   const nombre = String(formData.get("nombre") ?? "").trim();
@@ -19,9 +34,11 @@ export async function crearFamilia(formData: FormData) {
     nombre,
     tipo: textoOpcional(formData, "tipo"),
     centrocosto: textoOpcional(formData, "centrocosto"),
+    fc_objetivo: fcObjetivoOpcional(formData),
   });
 
   revalidatePath("/familias");
+  revalidatePath("/recetas");
 }
 
 export async function actualizarFamilia(formData: FormData) {
@@ -36,11 +53,13 @@ export async function actualizarFamilia(formData: FormData) {
       nombre,
       tipo: textoOpcional(formData, "tipo"),
       centrocosto: textoOpcional(formData, "centrocosto"),
+      fc_objetivo: fcObjetivoOpcional(formData),
       activo: formData.get("activo") === "on",
     })
     .eq("id", id);
 
   revalidatePath("/familias");
+  revalidatePath("/recetas");
 }
 
 export async function crearSubfamilia(formData: FormData) {
