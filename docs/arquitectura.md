@@ -772,3 +772,65 @@ el mismo estado de los datos que ya se ve en el resto de la aplicación.
 
 No se modificó ni se tocó el GastroCore viejo (`gastro-core.vercel.app`)
 en ningún momento.
+## Selector de marca/sede más simple, arreglo de ingredientes en 0, zoom de foto en el Recetario y claves de Bar/Cocina (07/10)
+
+**Selector de marca/sede simplificado.** El selector del header repetía el
+nombre de la marca dos veces cuando solo hay una marca (el caso de
+Rocoto). Se simplificó para que, cuando el usuario solo tiene una marca
+disponible, el selector muestre directamente las sedes sin repetir el
+nombre de la marca — no cambió a quién le aparece el selector ni qué
+sedes puede elegir cada usuario, solo cómo se ve.
+
+**Arreglo: "Ingredientes (0)" al abrir una receta recién editada.** Mariluz
+reportó que, justo después de guardar cambios en una receta, al volver a
+abrirla a veces mostraba "Ingredientes (0)" aunque los ingredientes
+seguían ahí (se veían bien si refrescaba la página). Era un problema de
+caché: la pantalla de detalle de receta quedaba mostrando una versión
+guardada en memoria por Next.js, de antes de la edición. Se corrigió
+marcando esa pantalla para que siempre traiga los datos frescos de la
+base de datos en vez de usar la versión en caché. No se tocó ninguna
+fórmula ni ningún dato — es un cambio de cuándo se lee la información, no
+de qué información se lee. Pendiente: que Mariluz confirme editando una
+receta y revisando que los ingredientes salgan bien apenas se abre, sin
+tener que refrescar.
+
+**Foto completa y lupa en el Recetario.** En el Recetario público (el que
+usa el personal de cocina, sin costos ni precios), la foto de cada receta
+se mostraba recortada. Se cambió para que se vea la foto completa, y se
+agregó una lupa (🔍) que al tocarla la abre en grande, en el centro de la
+pantalla, para verla con más detalle.
+
+**Claves de Bar y Cocina para el Recetario.** Mariluz pidió poder separar
+lo que ve el personal de Bar de lo que ve el personal de Cocina dentro del
+Recetario, cada uno con su propia clave numérica. Quedó así:
+
+- En **Configuración** hay un formulario nuevo, por sede, para definir una
+  "Clave de Bar" y una "Clave de Cocina" (números, ej. 1234). Si se deja
+  un campo vacío, esa área queda abierta sin pedir clave.
+- En **Familias** hay un selector nuevo, "Área (Recetario)", con cuatro
+  opciones: Sin asignar, Bar, Cocina o Ambas. Define a qué área
+  pertenecen las recetas de esa familia. Las familias sin asignar se
+  muestran en las dos áreas.
+- Al entrar al **Recetario**, si la sede tiene alguna clave configurada,
+  aparece una pantalla pidiendo la clave antes de mostrar las recetas; una
+  vez puesta la clave correcta, el Recetario queda filtrado solo con las
+  recetas del área que corresponde (Bar o Cocina). Si la sede no tiene
+  ninguna clave puesta, el Recetario se ve completo, igual que antes —
+  nada cambia para las sedes que no usen esta función.
+
+Pendiente de parte de Mariluz: entrar a Configuración de cada sede que
+quiera usar esta función y cargar las claves de Bar y Cocina, y revisar en
+Familias que cada familia tenga marcada el área que le corresponde (Bar,
+Cocina o Ambas) — mientras no se marquen, esas familias se siguen viendo
+en las dos áreas.
+
+**Un problema técnico que apareció y ya se resolvió.** Al subir estos
+cambios, el sitio quedó con un error de compilación (comillas sueltas
+dentro de un texto en dos pantallas — Configuración y Familias — que
+había que escribir de otra forma) y no llegó a desplegarse. Se
+diagnosticó revisando el registro de errores de Vercel, se corrigió, y se
+confirmó que el siguiente despliegue quedó en estado "Ready" (listo)
+antes de dar por terminada la tarea.
+
+No se modificó ni se tocó el GastroCore viejo (`gastro-core.vercel.app`)
+en ningún momento.
