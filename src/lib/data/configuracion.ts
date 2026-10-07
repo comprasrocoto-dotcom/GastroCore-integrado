@@ -69,3 +69,50 @@ export async function guardarConfiguracionCosteo(
     { onConflict: "clave,sede_id" }
   );
 }
+
+const CLAVE_CLAVES_RECETARIO = "claves_recetario";
+
+export type ClavesRecetario = {
+  bar: string | null;
+  cocina: string | null;
+};
+
+/**
+ * Claves (PIN) para entrar al Recetario filtrado por área — Bar o Cocina
+ * (`familias.centrocosto`). Mientras una sede no tenga clave guardada acá,
+ * el Recetario de esa sede se sigue viendo sin pedir nada, igual que
+ * siempre — el candado solo se activa para una sede el día que alguien
+ * carga una clave en Configuración.
+ */
+export async function obtenerClavesRecetario(sedeId: string): Promise<ClavesRecetario> {
+  const supabase = createClient();
+  const { data } = await supabase
+    .from("configuracion")
+    .select("valor")
+    .eq("clave", CLAVE_CLAVES_RECETARIO)
+    .eq("sede_id", sedeId)
+    .maybeSingle();
+
+  const valor = (data?.valor ?? {}) as Partial<ClavesRecetario>;
+  return {
+    bar: typeof valor.bar === "string" && valor.bar.trim() ? valor.bar.trim() : null,
+    cocina: typeof valor.cocina === "string" && valor.cocina.trim() ? valor.cocina.trim() : null,
+  };
+}
+
+export async function guardarClavesRecetario(
+  sedeId: string,
+  usuarioId: string | null,
+  datos: ClavesRecetario
+) {
+  const supabase = createClient();
+  return supabase.from("configuracion").upsert(
+    {
+      clave: CLAVE_CLAVES_RECETARIO,
+      sede_id: sedeId,
+      valor: datos,
+      actualizado_por: usuarioId,
+    },
+    { onConflict: "clave,sede_id" }
+  );
+}
