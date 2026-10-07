@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getUsuarioActual } from "@/lib/auth/usuario-actual";
-import { guardarConfiguracionCosteo } from "@/lib/data/configuracion";
+import { guardarConfiguracionCosteo, guardarClavesRecetario } from "@/lib/data/configuracion";
 
 export async function guardarConfiguracion(formData: FormData) {
   const sedeId = String(formData.get("sede_id") ?? "");
@@ -28,4 +28,22 @@ export async function guardarConfiguracion(formData: FormData) {
 
   revalidatePath("/configuracion");
   revalidatePath("/recetas");
+}
+
+export async function guardarClaves(formData: FormData) {
+  const sedeId = String(formData.get("sede_id") ?? "");
+  if (!sedeId) return;
+
+  const claveBar = String(formData.get("clave_bar") ?? "").trim();
+  const claveCocina = String(formData.get("clave_cocina") ?? "").trim();
+
+  const usuario = await getUsuarioActual();
+
+  await guardarClavesRecetario(sedeId, usuario?.id ?? null, {
+    bar: claveBar || null,
+    cocina: claveCocina || null,
+  });
+
+  revalidatePath("/configuracion");
+  revalidatePath("/recetario");
 }
