@@ -120,7 +120,7 @@ export default async function ConfiguracionPage({
           <h2 className="text-sm font-semibold">Claves del Recetario (Bar / Cocina)</h2>
           <p className="mt-1 text-xs" style={{ color: "var(--muted)" }}>
             Para que cada puesto (Bar o Cocina) entre al Recetario y vea solo las recetas de su
-            área (según el campo "Área" de cada familia, en la pantalla Familias). Dejá un campo
+            área (según el campo &quot;Área&quot; de cada familia, en la pantalla Familias). Dejá un campo
             vacío para que esa área quede abierta sin clave.
           </p>
         </div>
