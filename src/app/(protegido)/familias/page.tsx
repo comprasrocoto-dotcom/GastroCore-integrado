@@ -34,6 +34,10 @@ export default async function FamiliasPage({
         <p className="eyebrow">{sedeActiva.marca_nombre} / {sedeActiva.nombre}</p>
         <h1 className="text-xl font-semibold">Familias y subfamilias</h1>
         <p className="mt-1 text-sm" style={{ color: "var(--muted)" }}>{familias.length} familias</p>
+        <p className="mt-1 text-xs" style={{ color: "var(--muted)" }}>
+          El campo "Área (Recetario)" decide qué ve cada clave en el Recetario: Bar, Cocina o
+          Ambas. Las familias sin asignar se muestran en las dos áreas.
+        </p>
       </div>
 
       <form action={crearFamilia} className="card flex flex-wrap items-end gap-2 p-3">
@@ -43,7 +47,15 @@ export default async function FamiliasPage({
           <input name="nombre" required placeholder="Nombre" className={inputClase} />
         </div>
         <input name="tipo" placeholder="Tipo (opcional)" className={inputClase} />
-        <input name="centrocosto" placeholder="Centro de costo (opcional)" className={inputClase} />
+        <div className="flex flex-col gap-1">
+          <label className="text-xs" style={{ color: "var(--muted)" }}>Área (Recetario)</label>
+          <select name="centrocosto" defaultValue="" className={inputClase}>
+            <option value="">Sin asignar</option>
+            <option value="BAR">Bar</option>
+            <option value="COCINA">Cocina</option>
+            <option value="AMBAS">Ambas</option>
+          </select>
+        </div>
         <button type="submit" className="btn-primary">
           Agregar
         </button>
@@ -67,12 +79,19 @@ export default async function FamiliasPage({
               <input type="hidden" name="id" value={f.id} />
               <input name="nombre" defaultValue={f.nombre} className={inputClase} />
               <input name="tipo" defaultValue={f.tipo ?? ""} placeholder="Tipo" className={inputClase} />
-              <input
-                name="centrocosto"
-                defaultValue={f.centrocosto ?? ""}
-                placeholder="Centro de costo"
-                className={inputClase}
-              />
+              <div className="flex flex-col gap-1">
+                <label className="text-xs" style={{ color: "var(--muted)" }}>Área (Recetario)</label>
+                <select
+                  name="centrocosto"
+                  defaultValue={(f.centrocosto ?? "").toUpperCase()}
+                  className={inputClase}
+                >
+                  <option value="">Sin asignar</option>
+                  <option value="BAR">Bar</option>
+                  <option value="COCINA">Cocina</option>
+                  <option value="AMBAS">Ambas</option>
+                </select>
+              </div>
               <label className="flex items-center gap-1 text-sm text-slate-600">
                 <input type="checkbox" name="activo" defaultChecked={f.activo} />
                 Activa
