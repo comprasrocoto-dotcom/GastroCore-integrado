@@ -26,7 +26,10 @@ type ConfigCosteo = {
   iva: number;
 };
 
-type FamiliaOpcion = { id: string; nombre: string };
+/** `fcObjetivo` es el food cost objetivo propio de la familia (fracción),
+ * o `null` si esa familia no tiene uno propio y usa el general de
+ * Configuración — mismo campo que se carga en la pantalla Familias. */
+type FamiliaOpcion = { id: string; nombre: string; fcObjetivo: number | null };
 
 /** Valores con los que arranca el formulario cuando se usa para EDITAR una
  * receta existente (viene de RecetaDetallePage → /recetas/nueva?edit=ID),
@@ -108,16 +111,29 @@ export default function RecetaForm({
     });
   }, [lineas, itemPorId]);
 
+  // Si la familia elegida tiene su propio food cost objetivo (pantalla
+  // Familias), se usa ese en vez del general de Configuración — mismo
+  // criterio que ya aplica `/recetas/[id]`.
+  const fcObjetivoEfectivo = useMemo(() => {
+    const familia = familias.find((f) => f.id === familiaId);
+    return familia?.fcObjetivo ?? configCosteo.fcObjetivo;
+  }, [familias, familiaId, configCosteo.fcObjetivo]);
+
   const costeo = useMemo(() => {
     const costoIngredientes = filas.reduce((s, f) => s + f.costoTotal, 0);
     const desvio = costoIngredientes * (desvioPct / 100);
     const costoFinal = costoIngredientes + desvio;
     const costoPorcion = costoFinal / (rendimiento || 1);
-    const sugerido = precioSugerido(costoPorcion, configCosteo.fcObjetivo, configCosteo.iva);
+    const sugerido = precioSugerido(costoPorcion, fcObjetivoEfectivo, configCosteo.iva);
     const resumen =
-      precioReal > 0 ? calcularResumenCosteo(costoPorcion, precioReal, configCosteo) : null;
+      precioReal > 0
+        ? calcularResumenCosteo(costoPorcion, precioReal, {
+            ...configCosteo,
+            fcObjetivo: fcObjetivoEfectivo,
+          })
+        : null;
     return { costoIngredientes, desvio, costoFinal, costoPorcion, sugerido, resumen };
-  }, [filas, desvioPct, rendimiento, precioReal, configCosteo]);
+  }, [filas, desvioPct, rendimiento, precioReal, configCosteo, fcObjetivoEfectivo]);
 
   const addLinea = () =>
     setLineas((p) => [...p, { itemId: "", tipoItem: "insumo", unidad: "", cantidad: 1, mermaPct: 0 }]);
@@ -370,8 +386,13 @@ export default function RecetaForm({
               <span>{money(costeo.costoPorcion)}</span>
             </div>
             <div className="ticket-row">
-              <span>Food cost objetivo</span>
-              <span>{pct(configCosteo.fcObjetivo * 100)}</span>
+              <span>
+                Food cost objetivo
+                {familias.find((f) => f.id === familiaId)?.fcObjetivo != null && (
+                  <span className="ml-1 text-[10px] text-slate-400">(familia)</span>
+                )}
+              </span>
+              <span>{pct(fcObjetivoEfectivo * 100)}</span>
             </div>
             <div className="my-1 border-t border-dashed" style={{ borderColor: "var(--line)" }} />
             <div className="ticket-row font-semibold text-[#1E3A5F]">
