@@ -21,12 +21,16 @@ import { logout } from "@/app/login/actions";
  * Orden y módulos calcados del GastroCore real (ver capturas de
  * referencia de Mariluz, 19/09): Insumos, Subrecetas, Recetas, Familias,
  * Panel, Análisis, Usuarios, Manual, Configuración. Configuración ya se
- * construyó (21/09) y se agregó acá; Panel, Análisis, Usuarios y Manual
- * todavía no existen como pantallas en Gastro Central — se agregan recién
- * cuando cada uno esté construido, para no dejar links rotos.
- * "Recetario" (solo preparación/emplatado, sin costos) es una pantalla
- * propia de Gastro Central que no existe en el GastroCore real — se deja
- * al final, después de los módulos que sí tienen equivalente.
+ * construyó (21/09) y se agregó acá; Panel, Análisis y Manual todavía no
+ * existen como pantallas en Gastro Central — se agregan recién cuando
+ * cada uno esté construido, para no dejar links rotos. "Recetario" (solo
+ * preparación/emplatado, sin costos) es una pantalla propia de Gastro
+ * Central que no existe en el GastroCore real — se deja al final,
+ * después de los módulos que sí tienen equivalente.
+ *
+ * "Marcas" y "Usuarios" (20/10) son pantallas nuevas, reservadas al
+ * Admin multi-marca — no están en este array fijo porque solo deben
+ * aparecer para ese rol; se agregan condicionalmente más abajo.
  */
 const NAV = [
   { href: "/insumos", label: "Insumos", icon: "📦" },
@@ -37,14 +41,21 @@ const NAV = [
   { href: "/recetario", label: "Recetario", icon: "📖" },
 ];
 
+const NAV_MAESTRO = [
+  { href: "/marcas", label: "Marcas", icon: "🏷️" },
+  { href: "/usuarios", label: "Usuarios", icon: "👤" },
+];
+
 export default function HeaderProtegido({
   usuarioNombre,
   usuarioRol,
+  esMaestro,
   sedesVisibles,
   sedeIdPorDefecto,
 }: {
   usuarioNombre: string;
   usuarioRol: string;
+  esMaestro: boolean;
   sedesVisibles: SedeConMarca[];
   sedeIdPorDefecto: string | null;
 }) {
@@ -56,6 +67,8 @@ export default function HeaderProtegido({
 
   const conSede = (ruta: string) => (ruta === "/" ? ruta : sedeActivaId ? `${ruta}?sede=${sedeActivaId}` : ruta);
 
+  const navCompleto = esMaestro ? [...NAV, ...NAV_MAESTRO] : NAV;
+
   return (
     <header className="sticky top-0 z-40 border-b border-black/5 bg-white/90 backdrop-blur">
       <nav className="app-shell flex items-center gap-1 py-2 overflow-x-auto">
@@ -66,7 +79,7 @@ export default function HeaderProtegido({
           Gastro Central
         </Link>
         <div className="mx-2 h-6 w-px bg-black/10" />
-        {NAV.map((n) => (
+        {navCompleto.map((n) => (
           <Link
             key={n.href}
             href={conSede(n.href)}
