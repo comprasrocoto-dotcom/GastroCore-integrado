@@ -22,7 +22,7 @@ async function mapLineas(
   let query = supabase
     .from("ingredientes_receta")
     .select(
-      "id, tipo_item, insumo_id, subreceta_id, cantidad, unidad_codigo, merma_pct, costo_unitario, costo_linea, orden, insumos(articulo, subarticulo), subrecetas(nombre)"
+      "id, tipo_item, insumo_id, subreceta_id, cantidad, unidad_codigo, merma_pct, costo_unitario, costo_linea, orden, insumos(articulo, subarticulo), subrecetas!subreceta_id(nombre)"
     )
     .order("orden");
 
