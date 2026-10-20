@@ -876,3 +876,33 @@ cambio chico de hacer — pero hay que confirmarlo con ella primero.
 
 No se modificó ni se tocó el GastroCore viejo (`gastro-core.vercel.app`)
 en ningún momento.
+
+## Arreglo: las recetas no mostraban sus ingredientes (20/10)
+
+Mariluz avisó que una receta (Aperol Spritz, de la familia Gin Tonic)
+aparecía con "Ingredientes (0)" en su ficha, a pesar de tener costos
+cargados. Se investigó a fondo contra la base de datos antes de tocar
+nada, siguiendo la regla de no asumir y confirmar con evidencia.
+
+Qué se encontró: los ingredientes **nunca se perdieron** — seguían
+guardados correctamente en la base, con sus costos intactos. El problema
+estaba en la consulta que trae esos ingredientes para mostrarlos en
+pantalla. La tabla que guarda las líneas de ingredientes se usa para dos
+cosas a la vez (ingredientes de una receta, e ingredientes de una
+subreceta), así que tiene dos caminos distintos hacia la tabla de
+subrecetas. La consulta no decía cuál de los dos caminos usar, la base
+de datos no podía adivinar y devolvía un error en vez de los datos — y el
+código, al recibir ese error, mostraba simplemente "no hay ingredientes"
+en lugar de avisar que algo había fallado.
+
+Como esto no dependía de ninguna receta en particular, afectaba a
+cualquier receta al abrir su ficha, no solo a la del ejemplo que mandó
+Mariluz.
+
+El arreglo fue puntual: decirle a la consulta explícitamente por cuál
+camino ir. Un solo archivo (`src/lib/data/ingredientes.ts`), una sola
+línea cambiada, sin tocar ninguna regla de costeo ni de negocio.
+
+No se modificó ni se tocó el GastroCore viejo (`gastro-core.vercel.app`)
+en ningún momento.
+
