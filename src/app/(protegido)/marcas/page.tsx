@@ -1,6 +1,14 @@
 import { getUsuarioActual, esMaestro } from "@/lib/auth/usuario-actual";
 import { listarMarcasConSedes } from "@/lib/data/marcas";
-import { crearMarca, actualizarMarca, crearSede, actualizarSede } from "./actions";
+import {
+  crearMarca,
+  actualizarMarca,
+  eliminarMarca,
+  crearSede,
+  actualizarSede,
+  eliminarSede,
+} from "./actions";
+import BotonEliminar from "./BotonEliminar";
 
 const inputClase =
   "rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-[#1E3A5F]";
@@ -12,8 +20,19 @@ const inputClase =
  * y demás datos que ya tenga esa marca/sede quedan guardados en la base,
  * por si hace falta reactivarla — mismo patrón que ya usan Familias e
  * Insumos con su propio campo "Activa". Reservada al Admin multi-marca.
+ *
+ * "Eliminar" (20/10, a pedido explícito de Mariluz) sí borra la fila de
+ * verdad — pero el servidor (ver ./actions.ts) solo lo permite si la
+ * marca/sede está vacía (sin insumos, recetas, familias, subrecetas ni
+ * usuarios cargados). Si tiene datos, hay que desactivarla en vez de
+ * eliminarla, para no repetir el riesgo real que vivimos con una sede de
+ * 123 WOK con más de 1.500 insumos cargados.
  */
-export default async function MarcasPage() {
+export default async function MarcasPage({
+  searchParams,
+}: {
+  searchParams: { error?: string };
+}) {
   const usuario = await getUsuarioActual();
   if (!usuario) return null;
 
@@ -37,10 +56,20 @@ export default async function MarcasPage() {
         </p>
         <p className="mt-1 text-xs" style={{ color: "var(--muted)" }}>
           Desactivar una marca o sede no borra nada: solo la saca de los selectores de todos
-          los días. Los insumos, recetas y demás datos que ya tenga quedan guardados, por si
-          hay que reactivarla más adelante.
+          los días. Eliminar sí borra la fila de verdad, pero solo funciona si está vacía (sin
+          insumos, recetas ni otros datos cargados) — si tiene datos, desactivala en vez de
+          eliminarla.
         </p>
       </div>
+
+      {searchParams.error && (
+        <div
+          className="rounded-lg border px-3 py-2 text-sm"
+          style={{ borderColor: "#fca5a5", background: "#fef2f2", color: "#b91c1c" }}
+        >
+          {searchParams.error}
+        </div>
+      )}
 
       <form action={crearMarca} className="card flex flex-wrap items-end gap-2 p-3">
         <div className="flex flex-col gap-1">
@@ -64,21 +93,27 @@ export default async function MarcasPage() {
               </span>
             </summary>
 
-            <form
-              action={actualizarMarca}
+            <div
               className="mt-3 flex flex-wrap items-end gap-2 border-b pb-3"
               style={{ borderColor: "var(--line)" }}
             >
-              <input type="hidden" name="id" value={m.id} />
-              <input name="nombre" defaultValue={m.nombre} className={inputClase} />
-              <label className="flex items-center gap-1 text-sm text-slate-600">
-                <input type="checkbox" name="activo" defaultChecked={m.activo} />
-                Activa
-              </label>
-              <button type="submit" className="btn-secondary">
-                Guardar
-              </button>
-            </form>
+              <form action={actualizarMarca} className="flex flex-wrap items-end gap-2">
+                <input type="hidden" name="id" value={m.id} />
+                <input name="nombre" defaultValue={m.nombre} className={inputClase} />
+                <label className="flex items-center gap-1 text-sm text-slate-600">
+                  <input type="checkbox" name="activo" defaultChecked={m.activo} />
+                  Activa
+                </label>
+                <button type="submit" className="btn-secondary">
+                  Guardar
+                </button>
+              </form>
+              <form action={eliminarMarca}>
+                <input type="hidden" name="id" value={m.id} />
+                <input type="hidden" name="nombre" value={m.nombre} />
+                <BotonEliminar etiqueta={m.nombre} />
+              </form>
+            </div>
 
             <div className="mt-3 erp-scroll">
               <table className="erp-table">
@@ -93,17 +128,24 @@ export default async function MarcasPage() {
                   {m.sedes.map((s) => (
                     <tr key={s.id}>
                       <td colSpan={3}>
-                        <form action={actualizarSede} className="flex flex-wrap items-center gap-2">
-                          <input type="hidden" name="id" value={s.id} />
-                          <input name="nombre" defaultValue={s.nombre} className={inputClase} />
-                          <label className="flex items-center gap-1 text-sm text-slate-600">
-                            <input type="checkbox" name="activo" defaultChecked={s.activo} />
-                            Activa
-                          </label>
-                          <button type="submit" className="btn-secondary">
-                            Guardar
-                          </button>
-                        </form>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <form action={actualizarSede} className="flex flex-wrap items-center gap-2">
+                            <input type="hidden" name="id" value={s.id} />
+                            <input name="nombre" defaultValue={s.nombre} className={inputClase} />
+                            <label className="flex items-center gap-1 text-sm text-slate-600">
+                              <input type="checkbox" name="activo" defaultChecked={s.activo} />
+                              Activa
+                            </label>
+                            <button type="submit" className="btn-secondary">
+                              Guardar
+                            </button>
+                          </form>
+                          <form action={eliminarSede}>
+                            <input type="hidden" name="id" value={s.id} />
+                            <input type="hidden" name="nombre" value={s.nombre} />
+                            <BotonEliminar etiqueta={s.nombre} />
+                          </form>
+                        </div>
                       </td>
                     </tr>
                   ))}
