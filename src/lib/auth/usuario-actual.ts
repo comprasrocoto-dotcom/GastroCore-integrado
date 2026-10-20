@@ -28,7 +28,13 @@ export async function getUsuarioActual(): Promise<UsuarioActual | null> {
     .eq("id", user.id)
     .single();
 
-  if (error || !usuario) return null;
+  // Un usuario desactivado desde la pantalla "Usuarios" sigue existiendo
+  // en Supabase Auth (podría iniciar sesión), pero acá se lo tratamos
+  // como si no estuviera logueado — así el Layout protegido lo manda de
+  // vuelta a /login en cualquier pantalla, sin tener que tocar nada en
+  // Auth. `login/actions.ts` hace la misma revisión antes, para avisarle
+  // con un mensaje claro en vez de dejarlo rebotando en silencio.
+  if (error || !usuario || !usuario.activo) return null;
 
   return usuario as UsuarioActual;
 }
