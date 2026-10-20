@@ -835,6 +835,7 @@ antes de dar por terminada la tarea.
 
 No se modificó ni se tocó el GastroCore viejo (`gastro-core.vercel.app`)
 en ningún momento.
+
 ## Food cost objetivo propio por familia (07/10)
 
 Mariluz pidió poder manejar un food cost objetivo distinto para ciertas
