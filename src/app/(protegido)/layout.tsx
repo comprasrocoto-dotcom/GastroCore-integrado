@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getUsuarioActual } from "@/lib/auth/usuario-actual";
+import { getUsuarioActual, esMaestro } from "@/lib/auth/usuario-actual";
 import { getSedesVisibles, resolverSedeActiva } from "@/lib/data/sedes";
 import HeaderProtegido from "@/components/HeaderProtegido";
 
@@ -30,6 +30,7 @@ export default async function LayoutProtegido({
       <HeaderProtegido
         usuarioNombre={usuario.nombre}
         usuarioRol={usuario.rol}
+        esMaestro={esMaestro(usuario)}
         sedesVisibles={sedesVisibles}
         sedeIdPorDefecto={sedePorDefecto?.id ?? null}
       />
