@@ -835,3 +835,43 @@ antes de dar por terminada la tarea.
 
 No se modificó ni se tocó el GastroCore viejo (`gastro-core.vercel.app`)
 en ningún momento.
+## Food cost objetivo propio por familia (07/10)
+
+Mariluz pidió poder manejar un food cost objetivo distinto para ciertas
+familias de platos, porque en la práctica no todas las familias se
+manejan con el mismo objetivo (ej. una familia de postres puede tener un
+objetivo distinto al de una familia de carnes). Antes, el food cost
+objetivo era un solo número por sede, cargado en Configuración, y se
+usaba igual para todas las recetas de esa sede.
+
+Cómo quedó:
+
+- En **Familias**, cada familia (al crearla o al editarla) tiene ahora un
+  campo opcional "Food cost objetivo". Si se deja vacío, esa familia sigue
+  usando el food cost objetivo general de la sede (el de Configuración),
+  exactamente como funcionaba hasta ahora. Si se carga un número, esa
+  familia usa su propio objetivo en vez del de la sede.
+- Esto se refleja automáticamente en todos los lugares donde ya se
+  mostraba o se usaba el food cost objetivo para una receta: la tabla de
+  **Recetas**, la ficha de detalle de una receta, el **PDF** de la
+  receta, y el formulario de **Nueva receta / Editar receta**. En todos
+  esos lugares, cuando una receta pertenece a una familia con objetivo
+  propio, se ve una etiqueta chiquita "(familia)" al lado de "Food cost
+  objetivo" para dejar claro de dónde sale ese número.
+- No se tocó ninguna fórmula de cálculo (precio sugerido, utilidad,
+  margen, semáforo de food cost): siguen siendo exactamente las mismas
+  cuentas de siempre, solo que ahora pueden usar un food cost objetivo
+  distinto según la familia de la receta.
+
+**Quedó fuera de este cambio, a propósito: el Panel Ejecutivo.** El
+food cost objetivo especial para el Panel Ejecutivo (el segundo campo en
+Configuración, "Food cost objetivo — Panel Ejecutivo") sigue siendo un
+solo número por sede, igual que antes — no toma en cuenta el objetivo
+propio de cada familia. Se dejó así porque el Panel Ejecutivo todavía no
+existe como pantalla construida, y no queríamos inventar esa regla sin
+que Mariluz la confirme primero. Si más adelante quiere que el Panel
+Ejecutivo también respete el food cost objetivo por familia, es un
+cambio chico de hacer — pero hay que confirmarlo con ella primero.
+
+No se modificó ni se tocó el GastroCore viejo (`gastro-core.vercel.app`)
+en ningún momento.
