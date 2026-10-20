@@ -906,3 +906,54 @@ línea cambiada, sin tocar ninguna regla de costeo ni de negocio.
 No se modificó ni se tocó el GastroCore viejo (`gastro-core.vercel.app`)
 en ningún momento.
 
+
+## Administrar marcas, sedes y usuarios (20/10)
+
+Mariluz pidió poder dar de alta marcas y sedes nuevas ella misma (por
+ejemplo, para subir una marca nueva a costear, o una sede nueva dentro de
+una marca ya existente, como pasó con 123 WOK), poder desactivarlas
+cuando ya no se usan, y poder crear cuentas de usuario nuevas (correo,
+contraseña y rol) sin depender de que alguien lo haga por código.
+
+Cómo quedó:
+
+- **Pantalla nueva "Marcas"** (en el menú, solo visible para el Admin
+  multi-marca): lista todas las marcas con sus sedes, con un formulario
+  para agregar una marca nueva, uno para agregar una sede nueva dentro de
+  cada marca, y un casillero "Activa" para desactivar cualquier marca o
+  sede.
+- **"Desactivar" nunca borra nada de verdad.** Al apagar el casillero
+  "Activa" de una marca o una sede, esa marca/sede deja de aparecer en
+  los selectores de todos los días — pero los insumos, recetas, familias
+  y demás datos que ya tenga quedan guardados intactos en la base, por si
+  hace falta reactivarla más adelante. Es exactamente el mismo patrón que
+  ya usan Familias y Subfamilias con su propio casillero "Activa". Se
+  decidió así, en vez de un borrado de verdad, por el riesgo real que ya
+  vivimos con una sede de 123 WOK que tenía más de 1.500 insumos
+  cargados: un borrado accidental ahí hubiera sido imposible de deshacer.
+- **Pantalla nueva "Usuarios"** (también solo para el Admin multi-marca):
+  lista todos los usuarios con su correo, rol y marca/sede asignada, con
+  un formulario para crear un usuario nuevo (correo, contraseña y rol) y
+  un botón para activar/desactivar cada cuenta. Un usuario desactivado no
+  puede volver a entrar al sistema — si lo intenta, ve un mensaje claro
+  ("Tu usuario está desactivado. Consultá con el administrador.") en vez
+  de un error confuso.
+- Por seguridad, ambas pantallas — y las acciones de crear/desactivar por
+  detrás — están reservadas al Admin multi-marca (vos). Nadie más puede
+  crear ni desactivar marcas, sedes o usuarios, ni aunque intente entrar
+  directamente a la dirección de la pantalla.
+
+**Un paso pendiente de tu parte para que "Crear usuario" funcione:**
+crear una cuenta de usuario nueva requiere una clave especial de
+Supabase (la "service_role key") que, por seguridad, nunca debe pasar por
+mis manos — la tenés que cargar vos misma como variable de entorno en
+Vercel. Pasos: en Vercel, **Project Settings → Environment Variables**,
+agregás una nueva variable llamada `SUPABASE_SERVICE_ROLE_KEY`, y como
+valor pegás la clave que encontrás en Supabase, en **Project Settings →
+API → service_role**. Mientras esa variable no esté cargada, el botón
+"Crear usuario" va a mostrar un error claro explicando que falta esa
+variable, en vez de fallar en silencio — así que no hay riesgo de que
+parezca que funcionó sin funcionar.
+
+No se modificó ni se tocó el GastroCore viejo (`gastro-core.vercel.app`)
+en ningún momento.
