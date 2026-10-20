@@ -19,13 +19,29 @@ export async function login(
   }
 
   const supabase = createClient();
-  const { error } = await supabase.auth.signInWithPassword({
+  const { data, error } = await supabase.auth.signInWithPassword({
     email,
     password,
   });
 
-  if (error) {
+  if (error || !data.user) {
     return { error: "Correo o contraseña incorrectos." };
+  }
+
+  // La cuenta puede existir en Supabase Auth pero estar desactivada acá
+  // (tabla `usuarios`, pantalla Usuarios) sin que Auth lo sepa — se
+  // revisa para avisarle con un mensaje claro, en vez de dejarlo
+  // rebotando en silencio entre "/" y "/login" (que es lo que haría el
+  // Layout protegido de todos modos, por las dudas).
+  const { data: fila } = await supabase
+    .from("usuarios")
+    .select("activo")
+    .eq("id", data.user.id)
+    .single();
+
+  if (!fila?.activo) {
+    await supabase.auth.signOut();
+    return { error: "Tu usuario está desactivado. Consultá con el administrador." };
   }
 
   revalidatePath("/", "layout");
