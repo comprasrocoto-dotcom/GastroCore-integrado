@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getUsuarioActual } from "@/lib/auth/usuario-actual";
+import { getUsuarioActual, tieneModulo } from "@/lib/auth/usuario-actual";
 import { getSedesVisibles, resolverSedeActiva } from "@/lib/data/sedes";
 import { listarInsumos } from "@/lib/data/insumos";
 
@@ -10,6 +10,14 @@ export default async function InsumosPage({
 }) {
   const usuario = await getUsuarioActual();
   if (!usuario) return null;
+
+  if (!tieneModulo(usuario, "insumos")) {
+    return (
+      <p style={{ color: "var(--muted)" }}>
+        No tenés permiso para ver esta pantalla.
+      </p>
+    );
+  }
 
   const sedesVisibles = await getSedesVisibles();
   const sedeActiva = resolverSedeActiva(usuario, sedesVisibles, searchParams.sede);
