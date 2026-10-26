@@ -957,3 +957,37 @@ parezca que funcionó sin funcionar.
 
 No se modificó ni se tocó el GastroCore viejo (`gastro-core.vercel.app`)
 en ningún momento.
+
+
+## Arreglo: "Agregar marca" no dejaba cargar marcas nuevas (26/10)
+
+Mariluz avisó que al intentar agregar una marca nueva ("TATEQUIETO") desde
+la pantalla "Marcas y sedes", el botón "Agregar marca" no hacía nada — ni
+mensaje de error, ni la marca aparecía en la lista.
+
+La causa: cada marca y cada sede necesita internamente un identificador
+técnico corto y estable (el "slug", por ejemplo "tatequieto" para la marca
+"TATEQUIETO"), que usa el sistema puertas adentro para armar URLs e
+identificadores únicos. Ese campo es obligatorio en la base de datos, pero
+el formulario de "Agregar marca" y "Agregar sede" nunca lo completaba —
+entonces la base rechazaba el guardado, y ese rechazo no se le mostraba a
+Mariluz: quedaba en silencio, como si el botón no hiciera nada.
+
+El arreglo: ahora, al cargar una marca o una sede nueva, el sistema arma
+ese identificador automáticamente a partir del nombre escrito (todo en
+minúscula, sin tildes, espacios cambiados por guiones). Si dos marcas o
+sedes terminan generando el mismo identificador, el sistema prueba
+agregarle "-2", "-3", etc. hasta encontrar uno libre, en vez de fallar. Y
+si en algún caso puntual el guardado falla por otro motivo, ahora sí se
+muestra un mensaje de error claro en la pantalla, en vez de quedar en
+silencio.
+
+Mientras se armaba este arreglo, se cargó la marca "TATEQUIETO" directo en
+la base para no dejar a Mariluz bloqueada — ya está disponible y
+funcionando con normalidad.
+
+Un solo archivo tocado (`src/app/(protegido)/marcas/actions.ts`), sin
+cambios de base de datos ni de ninguna otra pantalla.
+
+No se modificó ni se tocó el GastroCore viejo (`gastro-core.vercel.app`)
+en ningún momento.
