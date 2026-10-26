@@ -23,15 +23,24 @@ export default function CrearUsuarioForm({ marcas }: { marcas: MarcaAdmin[] }) {
   const [estado, formAction] = useFormState(crearUsuario, estadoInicial);
   const [rol, setRol] = useState<"Admin" | "Chef" | "Lector">("Chef");
   const [alcance, setAlcance] = useState<"todas" | "marca" | "sede">("sede");
+  const [sedesElegidas, setSedesElegidas] = useState<string[]>([]);
 
-  // Chef y Lector siempre son de una sede puntual — no tiene sentido
-  // ofrecerles "todas las marcas" o "una marca completa".
+  // Chef y Lector siempre son de una o varias sedes puntuales — no tiene
+  // sentido ofrecerles "todas las marcas" o "una marca completa".
   const alcanceEfectivo = rol === "Admin" ? alcance : "sede";
 
-  const sedesDeLaMarca = useMemo(() => {
-    const todas = marcas.flatMap((m) => m.sedes.map((s) => ({ ...s, marcaNombre: m.nombre })));
-    return todas;
-  }, [marcas]);
+  // Solo las marcas que tienen al menos una sede activa, para no mostrar
+  // un grupo vacío en la lista de checkboxes.
+  const marcasConSedes = useMemo(
+    () => marcas.filter((m) => m.sedes.length > 0),
+    [marcas]
+  );
+
+  function alternarSede(sedeId: string, marcada: boolean) {
+    setSedesElegidas((actual) =>
+      marcada ? [...actual, sedeId] : actual.filter((id) => id !== sedeId)
+    );
+  }
 
   return (
     <form action={formAction} className="card flex flex-col gap-4 p-4" style={{ maxWidth: 480 }}>
@@ -92,7 +101,7 @@ export default function CrearUsuarioForm({ marcas }: { marcas: MarcaAdmin[] }) {
           >
             <option value="todas">Todas las marcas (como vos)</option>
             <option value="marca">Una sola marca</option>
-            <option value="sede">Una sola sede</option>
+            <option value="sede">Una o varias sedes puntuales</option>
           </select>
         </label>
       )}
@@ -118,21 +127,42 @@ export default function CrearUsuarioForm({ marcas }: { marcas: MarcaAdmin[] }) {
       )}
 
       {alcanceEfectivo === "sede" && (
-        <label className="flex flex-col gap-1">
+        <div className="flex flex-col gap-1">
           <span className="text-xs font-medium uppercase tracking-wide text-slate-500">
-            Sede
+            Sedes (elegí una o varias)
           </span>
-          <select name="sede_id" required className={inputClase} defaultValue="">
-            <option value="" disabled>
-              Elegí una sede
-            </option>
-            {sedesDeLaMarca.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.marcaNombre} / {s.nombre}
-              </option>
+          <div
+            className="flex max-h-48 flex-col gap-2 overflow-y-auto rounded-lg border border-slate-300 p-2"
+          >
+            {marcasConSedes.map((m) => (
+              <div key={m.id} className="flex flex-col gap-1">
+                <span className="text-xs font-semibold text-slate-500">{m.nombre}</span>
+                {m.sedes.map((s) => (
+                  <label key={s.id} className="flex items-center gap-2 pl-2 text-sm">
+                    <input
+                      type="checkbox"
+                      name="sede_ids"
+                      value={s.id}
+                      checked={sedesElegidas.includes(s.id)}
+                      onChange={(e) => alternarSede(s.id, e.target.checked)}
+                    />
+                    {s.nombre}
+                  </label>
+                ))}
+              </div>
             ))}
-          </select>
-        </label>
+            {marcasConSedes.length === 0 && (
+              <span className="text-sm text-slate-400">
+                Todavía no hay ninguna sede cargada.
+              </span>
+            )}
+          </div>
+          {sedesElegidas.length === 0 && (
+            <span className="text-xs" style={{ color: "var(--muted)" }}>
+              Tenés que elegir al menos una sede.
+            </span>
+          )}
+        </div>
       )}
 
       {estado.error && (
