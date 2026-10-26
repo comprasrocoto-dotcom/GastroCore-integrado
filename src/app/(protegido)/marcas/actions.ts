@@ -20,15 +20,51 @@ async function requireMaestro() {
   }
 }
 
+/**
+ * "marcas.slug" y "sedes.slug" son NOT NULL y únicos (por marca, en el
+ * caso de sedes) — los usa el sistema para armar URLs/identificadores
+ * estables. Se arman automáticamente a partir del nombre (todo minúscula,
+ * sin tildes, espacios y símbolos cambiados por guiones) para que quien
+ * da de alta una marca o sede nueva no tenga que pensar en esto.
+ */
+function generarSlug(nombre: string): string {
+  const base = nombre
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") // saca tildes/acentos
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return base || "marca";
+}
+
 export async function crearMarca(formData: FormData) {
   await requireMaestro();
   const nombre = String(formData.get("nombre") ?? "").trim();
   if (!nombre) return;
 
   const supabase = createClient();
-  await supabase.from("marcas").insert({ nombre });
+  const slugBase = generarSlug(nombre);
 
-  revalidatePath("/marcas");
+  // Si el slug ya existe (ej. dos marcas con nombre parecido), se prueba
+  // con "-2", "-3", etc. hasta encontrar uno libre, en vez de fallar.
+  let slug = slugBase;
+  for (let intento = 2; intento <= 20; intento++) {
+    const { error } = await supabase.from("marcas").insert({ nombre, slug });
+    if (!error) {
+      revalidatePath("/marcas");
+      return;
+    }
+    if (error.code !== "23505") {
+      // No es un choque de "ya existe" (unique_violation) — es otro error,
+      // no tiene sentido seguir probando slugs distintos.
+      redirect(`/marcas?error=${encodeURIComponent(`No se pudo crear la marca "${nombre}": ${error.message}`)}`);
+    }
+    slug = `${slugBase}-${intento}`;
+  }
+
+  redirect(
+    `/marcas?error=${encodeURIComponent(`No se pudo crear la marca "${nombre}": no se encontró un identificador libre.`)}`
+  );
 }
 
 /**
@@ -107,9 +143,27 @@ export async function crearSede(formData: FormData) {
   if (!marcaId || !nombre) return;
 
   const supabase = createClient();
-  await supabase.from("sedes").insert({ marca_id: marcaId, nombre });
+  const slugBase = generarSlug(nombre);
 
-  revalidatePath("/marcas");
+  // El slug de sede es único por marca (no global), así que alcanza con
+  // probar "-2", "-3", etc. si ya hay otra sede de esta misma marca con
+  // un nombre que genera el mismo slug.
+  let slug = slugBase;
+  for (let intento = 2; intento <= 20; intento++) {
+    const { error } = await supabase.from("sedes").insert({ marca_id: marcaId, nombre, slug });
+    if (!error) {
+      revalidatePath("/marcas");
+      return;
+    }
+    if (error.code !== "23505") {
+      redirect(`/marcas?error=${encodeURIComponent(`No se pudo crear la sede "${nombre}": ${error.message}`)}`);
+    }
+    slug = `${slugBase}-${intento}`;
+  }
+
+  redirect(
+    `/marcas?error=${encodeURIComponent(`No se pudo crear la sede "${nombre}": no se encontró un identificador libre.`)}`
+  );
 }
 
 export async function actualizarSede(formData: FormData) {
