@@ -31,6 +31,12 @@ import { logout } from "@/app/login/actions";
  * "Marcas" y "Usuarios" (20/10) son pantallas nuevas, reservadas al
  * Admin multi-marca — no están en este array fijo porque solo deben
  * aparecer para ese rol; se agregan condicionalmente más abajo.
+ *
+ * Desde el 26/10, cada usuario puede tener una lista de módulos
+ * permitidos (`usuarios.modulos`, ver "Usuarios") — si la tiene, acá se
+ * filtra para no mostrar ni un link a lo que no puede ver. La pantalla
+ * en sí también se bloquea si se entra por URL directa (ver los guards
+ * en cada page.tsx) — este filtro es solo para no mostrar el link.
  */
 const NAV = [
   { href: "/insumos", label: "Insumos", icon: "📦" },
@@ -52,12 +58,14 @@ export default function HeaderProtegido({
   esMaestro,
   sedesVisibles,
   sedeIdPorDefecto,
+  modulosPermitidos,
 }: {
   usuarioNombre: string;
   usuarioRol: string;
   esMaestro: boolean;
   sedesVisibles: SedeConMarca[];
   sedeIdPorDefecto: string | null;
+  modulosPermitidos: string[] | null;
 }) {
   const searchParams = useSearchParams();
   const sedeParam = searchParams.get("sede");
@@ -67,7 +75,11 @@ export default function HeaderProtegido({
 
   const conSede = (ruta: string) => (ruta === "/" ? ruta : sedeActivaId ? `${ruta}?sede=${sedeActivaId}` : ruta);
 
-  const navCompleto = esMaestro ? [...NAV, ...NAV_MAESTRO] : NAV;
+  const navBase =
+    esMaestro || !modulosPermitidos
+      ? NAV
+      : NAV.filter((n) => modulosPermitidos.includes(n.href.slice(1)));
+  const navCompleto = esMaestro ? [...navBase, ...NAV_MAESTRO] : navBase;
 
   return (
     <header className="sticky top-0 z-40 border-b border-black/5 bg-white/90 backdrop-blur">
