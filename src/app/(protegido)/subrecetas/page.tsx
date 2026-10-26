@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getUsuarioActual } from "@/lib/auth/usuario-actual";
+import { getUsuarioActual, tieneModulo } from "@/lib/auth/usuario-actual";
 import { getSedesVisibles, resolverSedeActiva } from "@/lib/data/sedes";
 import { listarSubrecetas } from "@/lib/data/subrecetas";
 
@@ -17,6 +17,14 @@ export default async function SubrecetasPage({
 }) {
   const usuario = await getUsuarioActual();
   if (!usuario) return null;
+
+  if (!tieneModulo(usuario, "subrecetas")) {
+    return (
+      <p style={{ color: "var(--muted)" }}>
+        No tenés permiso para ver esta pantalla.
+      </p>
+    );
+  }
 
   const sedesVisibles = await getSedesVisibles();
   const sedeActiva = resolverSedeActiva(usuario, sedesVisibles, searchParams.sede);
