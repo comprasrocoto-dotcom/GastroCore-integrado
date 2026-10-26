@@ -33,6 +33,7 @@ export default async function LayoutProtegido({
         esMaestro={esMaestro(usuario)}
         sedesVisibles={sedesVisibles}
         sedeIdPorDefecto={sedePorDefecto?.id ?? null}
+        modulosPermitidos={usuario.modulos}
       />
 
       <main className="app-shell py-8">{children}</main>
