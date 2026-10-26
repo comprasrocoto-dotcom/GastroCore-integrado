@@ -991,3 +991,67 @@ cambios de base de datos ni de ninguna otra pantalla.
 
 No se modificó ni se tocó el GastroCore viejo (`gastro-core.vercel.app`)
 en ningún momento.
+
+
+## Un usuario puede trabajar en varias sedes a la vez (26/10)
+
+Hasta ahora, cada usuario (Admin de una sede, Chef o Lector) quedaba
+atado a una única sede: si alguien trabajaba en dos locales distintos,
+había que crearle dos cuentas separadas, una por sede. Mariluz pidió
+poder asignarle varias sedes a la misma cuenta.
+
+Esto no era solo cambiar el formulario de "Crear usuario": la sede de
+cada usuario es la base de cómo el sistema protege la información en
+todas las pantallas (insumos, recetas, familias, precios, etc.) — así
+que hubo que tocar esa base con cuidado antes de tocar la pantalla.
+
+**Qué cambió en la base de datos:**
+- Se agregó una tabla nueva, `usuario_sedes`, que guarda la lista de
+  sedes de cada usuario (antes era un solo campo que solo podía tener
+  una). Es un cambio aditivo: no se borró ni se tocó la columna vieja,
+  y a todos los usuarios que ya existían (con una sola sede) se les
+  copió automáticamente su sede actual a la tabla nueva, así que nadie
+  perdió ni ganó acceso a nada con este cambio.
+- La regla de seguridad que decide "¿puede este usuario ver esta fila
+  de insumos/recetas/etc.?" ahora revisa esa lista completa en vez de
+  comparar contra una sola sede. Como esa regla está centralizada en
+  una sola función de la base de datos, no hubo que tocar la protección
+  de cada tabla por separado.
+- De paso se corrigió un caso límite que ya existía antes de este
+  cambio (se verificó que hoy no afecta a ningún usuario real): un
+  Admin creado con la opción "una sola sede" quedaba, por un detalle
+  interno, clasificado igual que el Admin dueño de todo el sistema, con
+  acceso a todas las marcas en vez de solo a su sede. Con sedes
+  múltiples ese mismo problema se iba a repetir y a notarse más (un
+  Admin pensado para 2-3 sedes puntuales terminaría viendo todo), así
+  que se corrigió de una.
+
+**Qué cambió en las pantallas:**
+- El formulario "Crear usuario" (pantalla Usuarios) ahora muestra una
+  lista de casillas para elegir una o varias sedes, agrupadas por
+  marca, en vez de un solo menú desplegable. Esto aplica a cualquier
+  rol: Admin con sedes puntuales, Chef o Lector.
+- El selector de "Marcas y sedes" que ya existía arriba de la pantalla
+  (el mismo que usan los Admin para moverse entre sedes) ahora también
+  le aparece a un Chef o Lector si tiene más de una sede asignada, para
+  que pueda elegir en cuál está trabajando en cada momento. Si solo
+  tiene una sede (como siempre fue hasta ahora), todo sigue exactamente
+  igual que antes — no ve ningún selector.
+- La lista de usuarios ahora muestra todas las sedes asignadas a cada
+  uno (separadas por coma) en la columna "Alcance".
+
+**Lo que queda pendiente, si hace falta más adelante:** hoy se puede
+elegir varias sedes al crear un usuario nuevo, pero todavía no hay una
+pantalla para cambiarle las sedes a un usuario que ya existe (solo se
+lo puede activar o desactivar). Si se necesita eso, se avisa y se
+construye aparte.
+
+Archivos tocados: `src/lib/data/sedes.ts`,
+`src/app/(protegido)/usuarios/CrearUsuarioForm.tsx`,
+`src/app/(protegido)/usuarios/actions.ts`,
+`src/app/(protegido)/usuarios/page.tsx`, y en la base de datos la tabla
+nueva `usuario_sedes` más dos funciones de seguridad actualizadas
+(`sede_visible`, `es_admin_multi_marca`).
+
+No se modificó ni se tocó el GastroCore viejo (`gastro-core.vercel.app`)
+en ningún momento.
