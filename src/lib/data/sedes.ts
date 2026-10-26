@@ -12,7 +12,10 @@ export type SedeConMarca = {
 /**
  * Marcas y sedes visibles para el usuario actual, ya filtradas por RLS
  * (sede_aislamiento / marcas_lectura / sedes_lectura) — no hace falta
- * repetir el filtro acá, alcanza con pedirle a Supabase los datos.
+ * repetir el filtro acá, alcanza con pedirle a Supabase los datos. Desde
+ * el 26/10 esto puede traer más de una sede también para un Chef/Lector
+ * (antes siempre traía como mucho una), porque sede_visible() ahora
+ * revisa la tabla usuario_sedes en vez de una sola sede fija.
  */
 export async function getSedesVisibles(): Promise<SedeConMarca[]> {
   const supabase = createClient();
@@ -36,18 +39,26 @@ export async function getSedesVisibles(): Promise<SedeConMarca[]> {
 }
 
 /**
- * Resuelve cuál es la sede "activa" para la pantalla actual:
- * - Usuario de una sola sede: siempre la suya (el selector no aplica).
- * - Admin de marca / maestro: la que venga en el query param `?sede=`, si
- *   es una de las visibles; si no hay ninguna válida, la primera visible.
+ * Resuelve cuál es la sede "activa" para la pantalla actual, a partir de
+ * las sedes que ya le dejaron ver (sedesVisibles, filtradas por RLS):
+ * - Si solo tiene una sede visible (típico de un Chef/Lector con una
+ *   sola sede asignada), esa es siempre la activa — el selector del
+ *   header ni se muestra en ese caso (ver SelectorSede).
+ * - Si tiene varias (Admin de marca, Admin multi-marca, o ahora también
+ *   un Chef/Lector/Admin con varias sedes asignadas), se usa la que
+ *   venga en el query param `?sede=` si es una de las visibles; si no
+ *   hay ninguna válida, se usa la primera.
+ *
+ * El parámetro `usuario` ya no hace falta para esta cuenta — se deja en
+ * la firma para no tener que tocar cada pantalla que la llama.
  */
 export function resolverSedeActiva(
-  usuario: Pick<UsuarioActual, "sede_id">,
+  _usuario: Pick<UsuarioActual, "sede_id">,
   sedesVisibles: SedeConMarca[],
   sedeParam: string | undefined
 ): SedeConMarca | null {
-  if (usuario.sede_id) {
-    return sedesVisibles.find((s) => s.id === usuario.sede_id) ?? null;
+  if (sedesVisibles.length <= 1) {
+    return sedesVisibles[0] ?? null;
   }
 
   if (sedeParam) {
