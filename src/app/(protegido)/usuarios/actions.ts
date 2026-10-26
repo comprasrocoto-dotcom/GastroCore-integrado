@@ -34,11 +34,15 @@ export async function crearUsuario(
   const password = String(formData.get("password") ?? "");
   const rol = String(formData.get("rol") ?? "") as Rol;
   // "todas" (Admin multi-marca), "marca" (Admin de una marca) o "sede"
-  // (Chef/Lector de una sede puntual) — ver RecetaForm/Familias para el
-  // mismo patrón de alcance explícito en vez de adivinar por los campos.
+  // (una o varias sedes puntuales — Chef y Lector siempre caen acá) —
+  // ver RecetaForm/Familias para el mismo patrón de alcance explícito en
+  // vez de adivinar por los campos.
   const alcance = String(formData.get("alcance") ?? "");
   const marcaId = String(formData.get("marca_id") ?? "") || null;
-  const sedeId = String(formData.get("sede_id") ?? "") || null;
+  // Antes era un solo "sede_id"; ahora el formulario manda uno o varios
+  // checkboxes con el mismo name="sede_ids", así que FormData trae una
+  // entrada por cada sede marcada.
+  const sedeIds = formData.getAll("sede_ids").map(String).filter(Boolean);
 
   if (!nombre || !email || !password) {
     return { error: "Faltan datos: nombre, correo y contraseña son obligatorios." };
@@ -49,14 +53,14 @@ export async function crearUsuario(
   if (!ROLES_VALIDOS.includes(rol)) {
     return { error: "Elegí un rol válido." };
   }
-  if (alcance === "sede" && !sedeId) {
-    return { error: "Elegí a qué sede pertenece este usuario." };
+  if (alcance === "sede" && sedeIds.length === 0) {
+    return { error: "Elegí al menos una sede para este usuario." };
   }
   if (alcance === "marca" && !marcaId) {
     return { error: "Elegí a qué marca pertenece este usuario." };
   }
   if (rol !== "Admin" && alcance !== "sede") {
-    return { error: "Chef y Lector tienen que estar asignados a una sede puntual." };
+    return { error: "Chef y Lector tienen que estar asignados a una o varias sedes puntuales." };
   }
 
   let adminClient;
@@ -84,7 +88,11 @@ export async function crearUsuario(
     nombre,
     rol,
     marca_id: alcance === "marca" ? marcaId : null,
-    sede_id: alcance === "sede" ? sedeId : null,
+    // La sede (o sedes) puntuales ya no se guardan acá — ver
+    // usuario_sedes más abajo. Esta columna queda en null para el caso
+    // "sede" (se mantiene por compatibilidad con datos viejos, pero deja
+    // de ser la fuente de verdad para el permiso).
+    sede_id: null,
     activo: true,
   });
 
@@ -94,6 +102,21 @@ export async function crearUsuario(
     // pueda iniciar sesión sin ningún permiso definido.
     await adminClient.auth.admin.deleteUser(nuevo.user.id);
     return { error: `No se pudo guardar el usuario: ${errorFila.message}` };
+  }
+
+  if (alcance === "sede" && sedeIds.length > 0) {
+    const { error: errorSedes } = await adminClient
+      .from("usuario_sedes")
+      .insert(sedeIds.map((sedeId) => ({ usuario_id: nuevo.user.id, sede_id: sedeId })));
+
+    if (errorSedes) {
+      // Mismo criterio que arriba: si no se pudo guardar a qué sedes
+      // tiene acceso, no dejamos una cuenta a medio configurar dando
+      // vueltas — se borra todo y se avisa con claridad.
+      await adminClient.from("usuarios").delete().eq("id", nuevo.user.id);
+      await adminClient.auth.admin.deleteUser(nuevo.user.id);
+      return { error: `No se pudieron guardar las sedes: ${errorSedes.message}` };
+    }
   }
 
   revalidatePath("/usuarios");
