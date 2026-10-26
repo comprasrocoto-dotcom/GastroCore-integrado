@@ -11,31 +11,37 @@ type FilaUsuario = {
   rol: string;
   activo: boolean;
   marca_nombre: string | null;
-  sede_nombre: string | null;
+  sedes_nombres: string[];
 };
 
 async function listarUsuarios(): Promise<FilaUsuario[]> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("usuarios")
-    .select("id, email, nombre, rol, activo, marcas(nombre), sedes(nombre)")
+    .select("id, email, nombre, rol, activo, marcas(nombre), usuario_sedes(sedes(nombre))")
     .order("nombre");
 
   if (error || !data) return [];
 
-  return data.map((u) => ({
-    id: u.id as string,
-    email: u.email as string,
-    nombre: u.nombre as string,
-    rol: u.rol as string,
-    activo: u.activo as boolean,
-    marca_nombre: (u.marcas as unknown as { nombre: string } | null)?.nombre ?? null,
-    sede_nombre: (u.sedes as unknown as { nombre: string } | null)?.nombre ?? null,
-  }));
+  return data.map((u) => {
+    const sedesAsignadas = (u.usuario_sedes as unknown as { sedes: { nombre: string } | null }[]) ?? [];
+    return {
+      id: u.id as string,
+      email: u.email as string,
+      nombre: u.nombre as string,
+      rol: u.rol as string,
+      activo: u.activo as boolean,
+      marca_nombre: (u.marcas as unknown as { nombre: string } | null)?.nombre ?? null,
+      sedes_nombres: sedesAsignadas
+        .map((fila) => fila.sedes?.nombre)
+        .filter((nombre): nombre is string => Boolean(nombre))
+        .sort((a, b) => a.localeCompare(b)),
+    };
+  });
 }
 
 function alcanceTexto(u: FilaUsuario) {
-  if (u.sede_nombre) return u.sede_nombre;
+  if (u.sedes_nombres.length > 0) return u.sedes_nombres.join(", ");
   if (u.marca_nombre) return `${u.marca_nombre} (toda la marca)`;
   return "Todas las marcas";
 }
@@ -44,6 +50,10 @@ function alcanceTexto(u: FilaUsuario) {
  * Usuarios — crear cuentas nuevas (correo + contraseña + rol) y
  * activar/desactivar las que ya existen. Reservada al Admin multi-marca:
  * define quién puede entrar al sistema y qué puede ver cada quien.
+ *
+ * Desde el 26/10 un usuario puede tener una o varias sedes asignadas
+ * (tabla usuario_sedes) en vez de una sola — ver docs/arquitectura.md,
+ * sección "Sedes múltiples por usuario".
  *
  * Para crear la cuenta de verdad en Supabase Auth hace falta la
  * service_role key como variable de entorno en Vercel
