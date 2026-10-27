@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { getUsuarioActual, esMaestro } from "@/lib/auth/usuario-actual";
 import { createClient } from "@/lib/supabase/server";
 import { listarMarcasConSedes } from "@/lib/data/marcas";
@@ -96,6 +97,7 @@ export default async function UsuariosPage() {
               <th>Alcance</th>
               <th>Activo</th>
               <th></th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
@@ -105,7 +107,7 @@ export default async function UsuariosPage() {
                 <td>{u.email}</td>
                 <td>{u.rol}</td>
                 <td>{alcanceTexto(u)}</td>
-                <td colSpan={2}>
+                <td>
                   <form action={cambiarEstadoUsuario} className="flex items-center gap-2">
                     <input type="hidden" name="id" value={u.id} />
                     <label className="flex items-center gap-1 text-sm text-slate-600">
@@ -117,11 +119,16 @@ export default async function UsuariosPage() {
                     </button>
                   </form>
                 </td>
+                <td className="text-right">
+                  <Link href={`/usuarios/${u.id}`} className="text-sm font-medium text-[#2563EB] hover:underline">
+                    Editar
+                  </Link>
+                </td>
               </tr>
             ))}
             {usuarios.length === 0 && (
               <tr>
-                <td colSpan={6} className="text-sm text-slate-400">
+                <td colSpan={7} className="text-sm text-slate-400">
                   Todavía no hay usuarios creados desde acá.
                 </td>
               </tr>
