@@ -55,7 +55,7 @@ async function requireMaestro() {
   return usuario;
 }
 
-const ROLES_VALIDOs: Rol[] = ["Admin", "Chef", "Lector"];
+const ROLES_VALIDOS: Rol[] = ["Admin", "Chef", "Lector"];
 
 export async function crearUsuario(
   _estadoPrevio: EstadoUsuario,
