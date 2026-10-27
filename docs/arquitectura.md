@@ -1123,3 +1123,53 @@ datos las columnas nuevas `usuarios.modulos` y `usuarios.area`.
 
 No se modificó ni se tocó el GastroCore viejo (`gastro-core.vercel.app`)
 en ningún momento.
+
+## Reorganizar Configuración: usuarios, marcas, centros de costo y plantillas de permisos (27/10)
+
+Mariluz pidió organizar la pantalla de Configuración agregando usuarios,
+roles, sedes, centros de costo y permisos, todo desde un solo lugar.
+
+**Qué se agregó:** debajo de las dos tarjetas que ya existían (Parámetros
+de costeo y Claves del Recetario), ahora aparece una sección nueva
+"Administración" — visible solo para el Admin multi-marca, igual que ya
+pasa con los links a Usuarios y Marcas en el menú — con cuatro partes:
+
+- **Usuarios:** una tarjeta con link directo a la pantalla de Usuarios que
+  ya existía (crear, editar, asignar sedes y permisos por pantalla/área).
+  No se duplicó nada, solo se puso un acceso rápido desde Configuración.
+- **Marcas y sedes:** una tarjeta con link directo a la pantalla de Marcas,
+  que ya tenía todo lo necesario para crear, renombrar, activar/desactivar
+  y borrar sedes (con los controles de seguridad para no borrar una sede
+  que todavía tiene datos). Tampoco se duplicó: ya estaba resuelto.
+- **Centros de costo:** un editor rápido, directo en Configuración, para
+  cambiar el campo "Área" de cada familia (BAR / COCINA / AMBAS) — el
+  mismo campo que ya existía en la pantalla Familias y que se usa para
+  filtrar el Recetario por área. Antes había que entrar a Familias una por
+  una; ahora se puede cambiar desde Configuración sin salir de ahí.
+- **Roles y permisos (plantillas):** una forma de guardar combinaciones de
+  pantallas + área con un nombre (ej. "Cocina básico" = Recetas +
+  Recetario, área Cocina) y aplicarlas de una sola vez a uno o varios
+  usuarios ya existentes, en vez de marcar los mismos checkboxes cada vez
+  que se da de alta a alguien con el mismo perfil. **Esto no es un rol de
+  seguridad nuevo:** los roles reales que protegen los datos (Admin / Chef
+  / Lector) siguen siendo exactamente los mismos y no se tocaron. Una
+  plantilla es solo un atajo — al aplicarla, copia esos permisos al
+  usuario elegido en ese momento; si después se cambia la plantilla, eso
+  no le cambia nada a los usuarios que ya la recibieron antes.
+
+**Verificación antes de subir:** además de la revisión de siempre, esta
+vez se armó una copia local del proyecto para correr la compilación
+completa de Next.js antes de tocar GitHub — esto permite detectar errores
+de tipos o de mezcla cliente/servidor antes de que lleguen a Vercel, en
+vez de enterarse recién cuando falla el despliegue real.
+
+Archivos tocados: `src/lib/data/plantillas.ts` (nuevo),
+`src/lib/data/usuarios.ts` (nuevo),
+`src/app/(protegido)/configuracion/plantillas-actions.ts` (nuevo),
+`src/app/(protegido)/configuracion/PlantillasPermisos.tsx` (nuevo),
+`src/app/(protegido)/familias/actions.ts`,
+`src/app/(protegido)/configuracion/page.tsx`, y en la base de datos la
+tabla nueva `plantillas_permisos`.
+
+No se modificó ni se tocó el GastroCore viejo (`gastro-core.vercel.app`)
+en ningún momento.
