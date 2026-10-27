@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getUsuarioActual } from "@/lib/auth/usuario-actual";
+import { getUsuarioActual, tieneModulo } from "@/lib/auth/usuario-actual";
 import { getSedesVisibles, resolverSedeActiva } from "@/lib/data/sedes";
 import { listarFamiliasParaPicker, obtenerReceta } from "@/lib/data/recetas";
 import {
@@ -20,10 +20,34 @@ export default async function NuevaRecetaPage({
   const usuario = await getUsuarioActual();
   if (!usuario) return null;
 
+  if (!tieneModulo(usuario, "recetas")) {
+    return (
+      <p style={{ color: "var(--muted)" }}>
+        No tenés permiso para ver esta pantalla.
+      </p>
+    );
+  }
+
   // Igual que GastroCore: esta misma pantalla sirve para crear y para
   // editar. Cuando llega ?edit=ID, se precarga la receta existente (datos
   // + ingredientes) y el formulario pasa a modo edición.
   const recetaExistente = searchParams.edit ? await obtenerReceta(searchParams.edit) : null;
+
+  // Si el usuario tiene un área personal asignada y la receta que quiere
+  // editar es de la otra área (Bar/Cocina de su familia), se bloquea acá
+  // — igual criterio que el filtro de familias de abajo, pero aplicado a
+  // una receta puntual por si alguien entra directo con el ID por URL.
+  if (usuario.area && recetaExistente) {
+    const c = (recetaExistente.familia_centrocosto ?? "").toUpperCase();
+    const visible = !c || c === "AMBAS" || c === usuario.area;
+    if (!visible) {
+      return (
+        <p style={{ color: "var(--muted)" }}>
+          No tenés permiso para editar esta receta.
+        </p>
+      );
+    }
+  }
 
   const sedesVisibles = await getSedesVisibles();
   const sedeActiva = resolverSedeActiva(
@@ -33,7 +57,7 @@ export default async function NuevaRecetaPage({
   );
   if (!sedeActiva) return <p style={{ color: "var(--muted)" }}>No hay ninguna sede disponible.</p>;
 
-  const [familias, insumos, subrecetas, unidades, configCosteo, ingredientesExistentes] =
+  const [familiasSinArea, insumos, subrecetas, unidades, configCosteo, ingredientesExistentes] =
     await Promise.all([
       listarFamiliasParaPicker(sedeActiva.id),
       listarInsumosParaPicker(sedeActiva.id),
@@ -42,6 +66,15 @@ export default async function NuevaRecetaPage({
       obtenerConfiguracionCosteo(sedeActiva.id),
       recetaExistente ? listarIngredientesDeReceta(recetaExistente.id) : Promise.resolve([]),
     ]);
+
+  // Mismo filtro de área que recetas/page.tsx, para que el selector de
+  // familia de este formulario no ofrezca familias de la otra área.
+  const familias = usuario.area
+    ? familiasSinArea.filter((f) => {
+        const c = (f.centrocosto ?? "").toUpperCase();
+        return !c || c === "AMBAS" || c === usuario.area;
+      })
+    : familiasSinArea;
 
   // Un solo listado para el buscador de ingredientes: insumos + subrecetas,
   // igual que el "catálogo" combinado de GastroCore.
@@ -96,8 +129,8 @@ export default async function NuevaRecetaPage({
           </h1>
           <p className="mt-1 text-sm" style={{ color: "var(--muted)" }}>
             Costeo por ingrediente con merma real, sincronizado con la base.
-          </p>
-        </div>
+        </p>
+      </div>
         <Link href={`/recetas?sede=${sedeActiva.id}`} className="text-sm text-slate-500 hover:underline">
           Volver
         </Link>
