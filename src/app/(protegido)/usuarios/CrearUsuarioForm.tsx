@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useFormState, useFormStatus } from "react-dom";
 import { crearUsuario, type EstadoUsuario } from "./actions";
 import type { MarcaAdmin } from "@/lib/data/marcas";
-import { MODULOS_DISPONIBLES, type Modulo } from "@/lib/auth/usuario-actual";
+import { MODULOS_DISPONIBLES, type Modulo } from "@/lib/auth/modulos";
 
 const ETIQUETA_MODULO: Record<Modulo, string> = {
   insumos: "Insumos",
