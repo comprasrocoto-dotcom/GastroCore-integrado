@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { getUsuarioActual } from "@/lib/auth/usuario-actual";
+import { getUsuarioActual, tieneModulo } from "@/lib/auth/usuario-actual";
 import { getSedesVisibles, resolverSedeActiva } from "@/lib/data/sedes";
 import { listarRecetario } from "@/lib/data/recetario";
 import { obtenerClavesRecetario } from "@/lib/data/configuracion";
@@ -17,19 +17,29 @@ export default async function RecetarioPage({
   const usuario = await getUsuarioActual();
   if (!usuario) return null;
 
+  if (!tieneModulo(usuario, "recetario")) {
+    return (
+      <p style={{ color: "var(--muted)" }}>
+        No tenés permiso para ver esta pantalla.
+      </p>
+    );
+  }
+
   const sedesVisibles = await getSedesVisibles();
   const sedeActiva = resolverSedeActiva(usuario, sedesVisibles, searchParams.sede);
   if (!sedeActiva) return <p style={{ color: "var(--muted)" }}>No hay ninguna sede disponible.</p>;
 
   // El candado de Bar/Cocina solo aplica si la sede tiene alguna clave
   // cargada en Configuración, y no aplica para Admin (ya ve todo con su
-  // propio usuario). Mientras nadie cargue una clave, el Recetario se ve
-  // exactamente como siempre.
+  // propio usuario) ni para alguien que ya tiene un área personal
+  // asignada (ver "Usuarios") — a esos dos no se les pide ninguna clave.
+  // Mientras nadie cargue una clave, el Recetario se ve exactamente
+  // como siempre.
   const claves = await obtenerClavesRecetario(sedeActiva.id);
-  const candadoActivo = (claves.bar || claves.cocina) && usuario.rol !== "Admin";
+  const candadoActivo = (claves.bar || claves.cocina) && usuario.rol !== "Admin" && !usuario.area;
 
-  let area: "BAR" | "COCINA" | null = null;
-  if (candadoActivo) {
+  let area: "BAR" | "COCINA" | null = usuario.area ?? null;
+  if (!area && candadoActivo) {
     const cookieArea = cookies().get(COOKIE_AREA_RECETARIO(sedeActiva.id))?.value;
     if (cookieArea === "BAR" || cookieArea === "COCINA") area = cookieArea;
   }
