@@ -63,22 +63,27 @@ export async function obtenerReceta(id: string) {
   const { data, error } = await supabase
     .from("recetas")
     .select(
-      "id, sede_id, nombre, familia_id, subfamilia_id, rendimiento, unidad_rendimiento_codigo, merma_pct, desvio_pct, costo_total, costo_porcion, precio_real, iva, activo, creado_en, actualizado_en, familias(nombre, fc_objetivo), subfamilias(nombre), sedes(nombre)"
+      "id, sede_id, nombre, familia_id, subfamilia_id, rendimiento, unidad_rendimiento_codigo, merma_pct, desvio_pct, costo_total, costo_porcion, precio_real, iva, activo, creado_en, actualizado_en, familias(nombre, fc_objetivo, centrocosto), subfamilias(nombre), sedes(nombre)"
     )
     .eq("id", id)
     .single();
 
   if (error || !data) return null;
   const { familias, subfamilias, sedes, ...resto } = data as typeof data & {
-    familias: { nombre: string; fc_objetivo: number | null } | null;
+    familias: { nombre: string; fc_objetivo: number | null; centrocosto: string | null } | null;
     subfamilias: { nombre: string } | null;
     sedes: { nombre: string } | null;
   };
   return {
     ...resto,
-    familia_nombre: (familias as unknown as { nombre: string; fc_objetivo: number | null } | null)?.nombre ?? null,
+    familia_nombre: (familias as unknown as { nombre: string; fc_objetivo: number | null; centrocosto: string | null } | null)?.nombre ?? null,
     familia_fc_objetivo:
-      (familias as unknown as { nombre: string; fc_objetivo: number | null } | null)?.fc_objetivo ?? null,
+      (familias as unknown as { nombre: string; fc_objetivo: number | null; centrocosto: string | null } | null)?.fc_objetivo ?? null,
+    /** Área (Bar/Cocina) de la familia de esta receta — usado para
+     * bloquear la edición/vista si el usuario tiene un área personal
+     * asignada distinta (ver recetas/nueva/page.tsx y recetas/[id]). */
+    familia_centrocosto:
+      (familias as unknown as { nombre: string; fc_objetivo: number | null; centrocosto: string | null } | null)?.centrocosto ?? null,
     subfamilia_nombre: (subfamilias as unknown as { nombre: string } | null)?.nombre ?? null,
     sede_nombre: (sedes as unknown as { nombre: string } | null)?.nombre ?? null,
     rendimiento: data.rendimiento === null ? null : Number(data.rendimiento),
@@ -232,7 +237,7 @@ export async function listarFamiliasParaPicker(sedeId: string) {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("familias")
-    .select("id, nombre, fc_objetivo")
+    .select("id, nombre, fc_objetivo, centrocosto")
     .eq("sede_id", sedeId)
     .eq("activo", true)
     .order("nombre");
@@ -242,5 +247,9 @@ export async function listarFamiliasParaPicker(sedeId: string) {
     id: f.id as string,
     nombre: f.nombre as string,
     fcObjetivo: f.fc_objetivo === null ? null : Number(f.fc_objetivo),
+    /** Área (Bar/Cocina) de la familia — se usa para filtrar el
+     * selector de familia del formulario de recetas cuando el usuario
+     * tiene un área personal asignada (ver recetas/nueva/page.tsx). */
+    centrocosto: f.centrocosto as string | null,
   }));
 }
