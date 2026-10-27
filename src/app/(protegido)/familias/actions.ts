@@ -62,6 +62,28 @@ export async function actualizarFamilia(formData: FormData) {
   revalidatePath("/recetas");
 }
 
+/**
+ * Atajo para cambiar solo el campo "Área (Recetario)" de una familia,
+ * sin tocar nombre/tipo/food cost objetivo/activo — lo usa la tarjeta
+ * "Centros de costo" en Configuración (27/10), que muestra todas las
+ * familias de la sede activa en una lista más corta que la pantalla
+ * completa de Familias, para cambiar esto rápido sin scrollear.
+ */
+export async function actualizarCentroCostoFamilia(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+
+  const supabase = createClient();
+  await supabase
+    .from("familias")
+    .update({ centrocosto: textoOpcional(formData, "centrocosto") })
+    .eq("id", id);
+
+  revalidatePath("/familias");
+  revalidatePath("/recetas");
+  revalidatePath("/configuracion");
+}
+
 export async function crearSubfamilia(formData: FormData) {
   const sedeId = String(formData.get("sede_id") ?? "");
   const familiaId = String(formData.get("familia_id") ?? "");
