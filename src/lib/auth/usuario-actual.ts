@@ -1,20 +1,15 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
+import { MODULOS_DISPONIBLES, type Modulo } from "@/lib/auth/modulos";
 
 export type Rol = "Admin" | "Chef" | "Lector";
 
-/** Módulos que se pueden restringir por usuario desde "Usuarios" (ver
- * CrearUsuarioForm/EditarUsuarioForm). "Marcas" y "Usuarios" no están acá
- * porque ya están reservados al Admin multi-marca por otro lado. */
-export const MODULOS_DISPONIBLES = [
-  "insumos",
-  "subrecetas",
-  "recetas",
-  "familias",
-  "configuracion",
-  "recetario",
-] as const;
-export type Modulo = (typeof MODULOS_DISPONIBLES)[number];
+// Reexportados para no romper los imports existentes que ya apuntan acá
+// (ej. usuarios/actions.ts) — la lista en sí vive en ./modulos porque ese
+// archivo NO tiene "server-only" y así CrearUsuarioForm/EditarUsuarioForm
+// (componentes de cliente) pueden importarla sin arrastrar código de
+// servidor al bundle del navegador.
+export { MODULOS_DISPONIBLES, type Modulo };
 
 export type UsuarioActual = {
   id: string;
