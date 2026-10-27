@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { getUsuarioActual, tieneModulo } from "@/lib/auth/usuario-actual";
 import { obtenerReceta } from "@/lib/data/recetas";
 import { listarIngredientesDeReceta } from "@/lib/data/ingredientes";
 import { calcularResumenCosteo } from "@/lib/costeo";
@@ -47,8 +48,34 @@ export default async function RecetaDetallePage({
 }: {
   params: { id: string };
 }) {
+  const usuario = await getUsuarioActual();
+  if (!usuario) return null;
+
+  if (!tieneModulo(usuario, "recetas")) {
+    return (
+      <p style={{ color: "var(--muted)" }}>
+        No tenés permiso para ver esta pantalla.
+      </p>
+    );
+  }
+
   const receta = await obtenerReceta(params.id);
   if (!receta) notFound();
+
+  // Si el usuario tiene un área personal asignada (Bar/Cocina), no puede
+  // ver el detalle/costos de una receta de la otra área — mismo criterio
+  // que el filtro de la lista en recetas/page.tsx.
+  if (usuario.area) {
+    const c = (receta.familia_centrocosto ?? "").toUpperCase();
+    const visible = !c || c === "AMBAS" || c === usuario.area;
+    if (!visible) {
+      return (
+        <p style={{ color: "var(--muted)" }}>
+          No tenés permiso para ver esta receta.
+        </p>
+      );
+    }
+  }
 
   const [ingredientes, ficha, historial, config] = await Promise.all([
     listarIngredientesDeReceta(receta.id),
