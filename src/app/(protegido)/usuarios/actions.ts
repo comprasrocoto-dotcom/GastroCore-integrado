@@ -3,9 +3,43 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getUsuarioActual, esMaestro, type Rol } from "@/lib/auth/usuario-actual";
+import {
+  getUsuarioActual,
+  esMaestro,
+  MODULOS_DISPONIBLES,
+  type Rol,
+  type Modulo,
+} from "@/lib/auth/usuario-actual";
 
 export type EstadoUsuario = { error: string | null };
+
+/**
+ * Lee los módulos y el área elegidos en el formulario (creación o
+ * edición) — comparten la misma forma de campos:
+ * - `sin_restricciones_modulos="on"` → módulos = null (ve todo, el
+ *   comportamiento de siempre).
+ * - si no, `modulos` trae uno o varios checkboxes marcados → se guarda
+ *   esa lista exacta (puede quedar vacía si no se marca ninguno, lo que
+ *   bloquea todas las pantallas a propósito).
+ * - `area`: "" = sin restricción, o "BAR"/"COCINA".
+ */
+function leerModulosYArea(formData: FormData): {
+  modulos: Modulo[] | null;
+  area: "BAR" | "COCINA" | null;
+} {
+  const sinRestricciones = formData.get("sin_restricciones_modulos") === "on";
+  const modulos = sinRestricciones
+    ? null
+    : formData
+        .getAll("modulos")
+        .map(String)
+        .filter((m): m is Modulo => (MODULOS_DISPONIBLES as readonly string[]).includes(m));
+
+  const areaRaw = String(formData.get("area") ?? "");
+  const area = areaRaw === "BAR" || areaRaw === "COCINA" ? areaRaw : null;
+
+  return { modulos, area };
+}
 
 /**
  * Crear o desactivar usuarios es, junto con Marcas y sedes, la operación
@@ -21,7 +55,7 @@ async function requireMaestro() {
   return usuario;
 }
 
-const ROLES_VALIDOS: Rol[] = ["Admin", "Chef", "Lector"];
+const ROLES_VALIDOs: Rol[] = ["Admin", "Chef", "Lector"];
 
 export async function crearUsuario(
   _estadoPrevio: EstadoUsuario,
@@ -43,6 +77,7 @@ export async function crearUsuario(
   // checkboxes con el mismo name="sede_ids", así que FormData trae una
   // entrada por cada sede marcada.
   const sedeIds = formData.getAll("sede_ids").map(String).filter(Boolean);
+  const { modulos, area } = leerModulosYArea(formData);
 
   if (!nombre || !email || !password) {
     return { error: "Faltan datos: nombre, correo y contraseña son obligatorios." };
@@ -94,6 +129,8 @@ export async function crearUsuario(
     // de ser la fuente de verdad para el permiso).
     sede_id: null,
     activo: true,
+    modulos,
+    area,
   });
 
   if (errorFila) {
@@ -141,4 +178,131 @@ export async function cambiarEstadoUsuario(formData: FormData) {
     .eq("id", id);
 
   revalidatePath("/usuarios");
+}
+
+
+/**
+ * Editar un usuario que ya existe: sedes asignadas (o marca/alcance si es
+ * Admin), módulos permitidos y área. A propósito NO se puede cambiar
+ * desde acá el nombre, el correo, la contraseña ni el rol — son datos
+ * más delicados (login/identidad) que quedan fuera de esta pantalla por
+ * ahora; si hace falta tocarlos, se avisa y se construye aparte.
+ */
+export async function actualizarUsuario(
+  _estadoPrevio: EstadoUsuario,
+  formData: FormData
+): Promise<EstadoUsuario> {
+  await requireMaestro();
+
+  const id = String(formData.get("id") ?? "");
+  if (!id) return { error: "Falta el usuario a editar." };
+
+  const supabase = createClient();
+
+  const { data: usuarioExistente, error: errorExistente } = await supabase
+    .from("usuarios")
+    .select("rol")
+    .eq("id", id)
+    .single();
+  if (errorExistente || !usuarioExistente) {
+    return { error: "No se encontró el usuario." };
+  }
+  const rol = usuarioExistente.rol as Rol;
+
+  const alcance = String(formData.get("alcance") ?? "sede");
+  const marcaId = String(formData.get("marca_id") ?? "") || null;
+  const sedeIds = formData.getAll("sede_ids").map(String).filter(Boolean);
+  const { modulos, area } = leerModulosYArea(formData);
+
+  if (alcance === "sede" && sedeIds.length === 0) {
+    return { error: "Elegí al menos una sede para este usuario." };
+  }
+  if (alcance === "marca" && !marcaId) {
+    return { error: "Elegí a qué marca pertenece este usuario." };
+  }
+  if (rol !== "Admin" && alcance !== "sede") {
+    return { error: "Chef y Lector tienen que estar asignados a una o varias sedes puntuales." };
+  }
+
+  const { error: errorUpdate } = await supabase
+    .from("usuarios")
+    .update({
+      marca_id: alcance === "marca" ? marcaId : null,
+      modulos,
+      area,
+    })
+    .eq("id", id);
+
+  if (errorUpdate) {
+    return { error: `No se pudo actualizar el usuario: ${errorUpdate.message}` };
+  }
+
+  // Se reemplaza la lista completa de sedes (borrar + volver a insertar)
+  // en vez de "parchear" una por una — mismo criterio que ya usa
+  // `actualizarRecetaConIngredientes` para las líneas de una receta.
+  const { error: errorBorrarSedes } = await supabase
+    .from("usuario_sedes")
+    .delete()
+    .eq("usuario_id", id);
+  if (errorBorrarSedes) {
+    return { error: `No se pudieron actualizar las sedes: ${errorBorrarSedes.message}` };
+  }
+
+  if (alcance === "sede" && sedeIds.length > 0) {
+    const { error: errorSedes } = await supabase
+      .from("usuario_sedes")
+      .insert(sedeIds.map((sedeId) => ({ usuario_id: id, sede_id: sedeId })));
+    if (errorSedes) {
+      return { error: `No se pudieron guardar las sedes: ${errorSedes.message}` };
+    }
+  }
+
+  revalidatePath("/usuarios");
+  revalidatePath(`/usuarios/${id}`);
+  return { error: null };
+}
+
+export type UsuarioParaEditar = {
+  id: string;
+  nombre: string;
+  email: string;
+  rol: Rol;
+  marca_id: string | null;
+  sede_ids: string[];
+  modulos: string[] | null;
+  area: "BAR" | "COCINA" | null;
+};
+
+/**
+ * Datos de un usuario puntual para precargar el formulario de edición —
+ * separado de `listarUsuarios` (usuarios/page.tsx) porque esa lista no
+ * necesita traer `usuario_sedes` fila por fila para cada usuario, solo
+ * los nombres ya agrupados.
+ */
+export async function obtenerUsuarioParaEditar(id: string): Promise<UsuarioParaEditar | null> {
+  await requireMaestro();
+
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("usuarios")
+    .select("id, nombre, email, rol, marca_id, modulos, area, usuario_sedes(sede_id)")
+    .eq("id", id)
+    .single();
+
+  if (error || !data) return null;
+
+  const sedeIds = ((data.usuario_sedes as unknown as { sede_id: string }[]) ?? []).map(
+    (fila) => fila.sede_id
+  );
+
+  return {
+    id: data.id as string,
+    nombre: data.nombre as string,
+    email: data.email as string,
+    rol: data.rol as Rol,
+    marca_id: data.marca_id as string | null,
+    sede_ids: sedeIds,
+    modulos: data.modulos as string[] | null,
+    area: data.area as "BAR" | "COCINA" | null,
+  };
 }
