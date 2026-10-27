@@ -4,6 +4,16 @@ import { useMemo, useState } from "react";
 import { useFormState, useFormStatus } from "react-dom";
 import { crearUsuario, type EstadoUsuario } from "./actions";
 import type { MarcaAdmin } from "@/lib/data/marcas";
+import { MODULOS_DISPONIBLES, type Modulo } from "@/lib/auth/usuario-actual";
+
+const ETIQUETA_MODULO: Record<Modulo, string> = {
+  insumos: "Insumos",
+  subrecetas: "Subrecetas",
+  recetas: "Recetas",
+  familias: "Familias",
+  configuracion: "Configuración",
+  recetario: "Recetario",
+};
 
 const inputClase =
   "rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-[#1E3A5F]";
@@ -24,6 +34,12 @@ export default function CrearUsuarioForm({ marcas }: { marcas: MarcaAdmin[] }) {
   const [rol, setRol] = useState<"Admin" | "Chef" | "Lector">("Chef");
   const [alcance, setAlcance] = useState<"todas" | "marca" | "sede">("sede");
   const [sedesElegidas, setSedesElegidas] = useState<string[]>([]);
+  // Módulos y área (26/10): por defecto un usuario nuevo ve todo, igual
+  // que siempre — recién si se destildan las "sin restricciones" aparece
+  // la lista para elegir qué pantallas puede ver.
+  const [sinRestricciones, setSinRestricciones] = useState(true);
+  const [modulosElegidos, setModulosElegidos] = useState<Modulo[]>([]);
+  const [area, setArea] = useState<"" | "BAR" | "COCINA">("");
 
   // Chef y Lector siempre son de una o varias sedes puntuales — no tiene
   // sentido ofrecerles "todas las marcas" o "una marca completa".
@@ -39,6 +55,12 @@ export default function CrearUsuarioForm({ marcas }: { marcas: MarcaAdmin[] }) {
   function alternarSede(sedeId: string, marcada: boolean) {
     setSedesElegidas((actual) =>
       marcada ? [...actual, sedeId] : actual.filter((id) => id !== sedeId)
+    );
+  }
+
+  function alternarModulo(modulo: Modulo, marcado: boolean) {
+    setModulosElegidos((actual) =>
+      marcado ? [...actual, modulo] : actual.filter((m) => m !== modulo)
     );
   }
 
@@ -164,6 +186,57 @@ export default function CrearUsuarioForm({ marcas }: { marcas: MarcaAdmin[] }) {
           )}
         </div>
       )}
+
+      <div className="flex flex-col gap-2 border-t pt-3" style={{ borderColor: "var(--line)" }}>
+        <span className="text-xs font-medium uppercase tracking-wide text-slate-500">
+          Pantallas que puede ver
+        </span>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            name="sin_restricciones_modulos"
+            checked={sinRestricciones}
+            onChange={(e) => setSinRestricciones(e.target.checked)}
+          />
+          Sin restricciones (ve todas las pantallas)
+        </label>
+        {!sinRestricciones && (
+          <div className="grid grid-cols-2 gap-1.5 rounded-lg border border-slate-300 p-2">
+            {MODULOS_DISPONIBLES.map((m) => (
+              <label key={m} className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  name="modulos"
+                  value={m}
+                  checked={modulosElegidos.includes(m)}
+                  onChange={(e) => alternarModulo(m, e.target.checked)}
+                />
+                {ETIQUETA_MODULO[m]}
+              </label>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <label className="flex flex-col gap-1">
+        <span className="text-xs font-medium uppercase tracking-wide text-slate-500">
+          Área (Bar / Cocina)
+        </span>
+        <select
+          name="area"
+          value={area}
+          onChange={(e) => setArea(e.target.value as typeof area)}
+          className={inputClase}
+        >
+          <option value="">Todas (sin restricción)</option>
+          <option value="BAR">Bar</option>
+          <option value="COCINA">Cocina</option>
+        </select>
+        <span className="text-xs" style={{ color: "var(--muted)" }}>
+          Si elegís Bar o Cocina, en Recetas y Recetario solo va a ver lo de esa área (según el
+          campo &quot;Área&quot; de cada familia, en la pantalla Familias).
+        </span>
+      </label>
 
       {estado.error && (
         <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
