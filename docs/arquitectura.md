@@ -1055,3 +1055,71 @@ nueva `usuario_sedes` más dos funciones de seguridad actualizadas
 
 No se modificó ni se tocó el GastroCore viejo (`gastro-core.vercel.app`)
 en ningún momento.
+
+
+## Permisos por pantalla y por área, y pantalla para editar usuarios (27/10)
+
+Mariluz pidió poder elegir, usuario por usuario, qué pantallas puede ver
+cada uno — por ejemplo, que Cesar solo vea el Recetario de Cocina y las
+Recetas de Cocina (con permiso para editar fichas técnicas), sin acceso a
+Insumos, Subrecetas, Familias ni Configuración.
+
+**Qué cambió en la base de datos:**
+- Se agregaron dos columnas nuevas a `usuarios`: `modulos` (la lista de
+  pantallas que puede ver ese usuario) y `area` ("BAR", "COCINA", o vacío).
+  Ambas quedan vacías por defecto, y una columna vacía significa "sin
+  restricción, ve todo" — exactamente el comportamiento de siempre. Así que
+  ningún usuario que ya existía perdió acceso a nada con este cambio.
+
+**Qué cambió en las pantallas:**
+- Insumos, Subrecetas, Familias, Configuración, Recetas y Recetario ahora
+  revisan si el usuario tiene permiso para esa pantalla antes de mostrarla
+  — tanto si intenta entrar por el menú como si escribe la dirección
+  directamente en el navegador. Si no tiene permiso, la pantalla queda
+  bloqueada con un aviso.
+- Además de las pantallas, se puede filtrar por área: si a un usuario se
+  le asigna "Cocina" o "Bar", en Recetas y en el Recetario solo ve las
+  recetas de las familias marcadas con esa área (el mismo campo "Área" que
+  ya existía en Familias). El candado por clave que tenía el Recetario
+  sigue funcionando igual para quien no tiene un área asignada.
+- La pantalla "Usuarios" ahora tiene un link "Editar" por cada usuario, que
+  lleva a un formulario nuevo donde se le pueden cambiar las sedes
+  asignadas, qué pantallas puede ver y su área — sin tocar su nombre,
+  correo, contraseña ni rol, que siguen siendo datos fijos que no se
+  cambian desde acá. Esto cierra el pendiente que había quedado anotado en
+  la sección anterior ("todavía no hay una pantalla para cambiarle las
+  sedes a un usuario que ya existe").
+- El formulario de "Crear usuario" también tiene ahora la misma elección
+  de pantallas y área para los usuarios nuevos.
+
+**Cesar ya quedó configurado** con acceso solo a Recetas y Recetario,
+área Cocina, como se pidió.
+
+**Un problema que apareció al desplegar, y cómo se resolvió:** el archivo
+que define la lista de pantallas disponibles (`usuario-actual.ts`) está
+marcado como "solo para el servidor" por seguridad, pero los formularios
+de crear y editar usuario corren en el navegador y necesitaban leer esa
+misma lista para pintar los checkboxes. Next.js no deja mezclar las dos
+cosas. Se solucionó moviendo solo la lista de pantallas a un archivo
+aparte (`modulos.ts`) que no tiene esa restricción, y el resto del código
+sigue funcionando exactamente igual.
+
+Archivos tocados: `src/lib/auth/usuario-actual.ts`,
+`src/lib/auth/modulos.ts` (nuevo), `src/lib/data/recetas.ts`,
+`src/app/(protegido)/insumos/page.tsx`,
+`src/app/(protegido)/subrecetas/page.tsx`,
+`src/app/(protegido)/familias/page.tsx`,
+`src/app/(protegido)/configuracion/page.tsx`,
+`src/app/(protegido)/recetas/page.tsx`,
+`src/app/(protegido)/recetas/nueva/page.tsx`,
+`src/app/(protegido)/recetas/[id]/page.tsx`,
+`src/app/(protegido)/recetario/page.tsx`,
+`src/app/(protegido)/usuarios/actions.ts`,
+`src/app/(protegido)/usuarios/CrearUsuarioForm.tsx`,
+`src/app/(protegido)/usuarios/page.tsx`,
+`src/app/(protegido)/usuarios/EditarUsuarioForm.tsx` (nuevo),
+`src/app/(protegido)/usuarios/[id]/page.tsx` (nuevo), y en la base de
+datos las columnas nuevas `usuarios.modulos` y `usuarios.area`.
+
+No se modificó ni se tocó el GastroCore viejo (`gastro-core.vercel.app`)
+en ningún momento.
