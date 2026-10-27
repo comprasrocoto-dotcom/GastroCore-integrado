@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getUsuarioActual } from "@/lib/auth/usuario-actual";
+import { getUsuarioActual, tieneModulo } from "@/lib/auth/usuario-actual";
 import { getSedesVisibles, resolverSedeActiva } from "@/lib/data/sedes";
 import { listarRecetas } from "@/lib/data/recetas";
 import { listarFamiliasConSubfamilias } from "@/lib/data/familias";
@@ -58,15 +58,39 @@ export default async function RecetasPage({
   const usuario = await getUsuarioActual();
   if (!usuario) return null;
 
+  if (!tieneModulo(usuario, "recetas")) {
+    return (
+      <p style={{ color: "var(--muted)" }}>
+        No tenés permiso para ver esta pantalla.
+      </p>
+    );
+  }
+
   const sedesVisibles = await getSedesVisibles();
   const sedeActiva = resolverSedeActiva(usuario, sedesVisibles, searchParams.sede);
   if (!sedeActiva) return <p style={{ color: "var(--muted)" }}>No hay ninguna sede disponible.</p>;
 
-  const [todas, familias, config] = await Promise.all([
+  const [todasSinArea, familiasSinArea, config] = await Promise.all([
     listarRecetas(sedeActiva.id),
     listarFamiliasConSubfamilias(sedeActiva.id),
     obtenerConfiguracionCosteo(sedeActiva.id),
   ]);
+
+  // Si este usuario tiene un área personal asignada (Bar o Cocina, ver
+  // "Usuarios"), se le filtran las familias y recetas de la otra área —
+  // misma regla que ya usaba el candado compartido del Recetario
+  // (RecetarioClaveGate): una familia es visible si no tiene área
+  // asignada, o si es "Ambas", o si coincide con el área del usuario.
+  const familiaVisiblePorArea = (centrocosto: string | null) => {
+    if (!usuario.area) return true;
+    const c = (centrocosto ?? "").toUpperCase();
+    return !c || c === "AMBAS" || c === usuario.area;
+  };
+  const familias = familiasSinArea.filter((f) => familiaVisiblePorArea(f.centrocosto));
+  const familiaIdsVisibles = new Set(familias.map((f) => f.id));
+  const todas = usuario.area
+    ? todasSinArea.filter((r) => !r.familia_id || familiaIdsVisibles.has(r.familia_id))
+    : todasSinArea;
 
   const centrocostoPorFamilia = new Map<string, string | null>();
   familias.forEach((f) => centrocostoPorFamilia.set(f.id, f.centrocosto));
