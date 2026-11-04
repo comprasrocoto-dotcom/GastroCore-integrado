@@ -4,13 +4,38 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import {
-  agregarLineaIngrediente,
-  eliminarLineaIngrediente,
-  recalcularSubreceta,
-} from "@/lib/data/ingredientes";
-import { crearSubrecetaConIngredientes } from "@/lib/data/subrecetas";
+  crearSubrecetaConIngredientes,
+  actualizarSubrecetaConIngredientes,
+} from "@/lib/data/subrecetas";
+import { registrarHistorialSubreceta } from "@/lib/data/historial-subrecetas";
 
 export type EstadoSubreceta = { error: string | null };
+
+function parsearLineas(formData: FormData):
+  | {
+      tipoItem: "insumo" | "subreceta";
+      itemId: string;
+      cantidad: number;
+      unidadCodigo: string | null;
+      mermaPct: number;
+    }[]
+  | null {
+  try {
+    const crudo = JSON.parse(String(formData.get("ingredientes_json") ?? "[]"));
+    if (!Array.isArray(crudo)) return [];
+    return crudo
+      .filter((l) => l && l.itemId && Number(l.cantidad) > 0)
+      .map((l) => ({
+        tipoItem: l.tipoItem === "subreceta" ? "subreceta" : "insumo",
+        itemId: String(l.itemId),
+        cantidad: Number(l.cantidad),
+        unidadCodigo: l.unidadCodigo ? String(l.unidadCodigo) : null,
+        mermaPct: Number(l.mermaPct) || 0,
+      }));
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Crea la subreceta, resuelve su insumo maestro (vincula uno "SUB." sin
@@ -35,27 +60,8 @@ export async function crearSubrecetaCompleta(
     return { error: 'Elegí el insumo "SUB." a vincular, o completá los datos para crear uno nuevo.' };
   }
 
-  let lineas: {
-    tipoItem: "insumo" | "subreceta";
-    itemId: string;
-    cantidad: number;
-    unidadCodigo: string | null;
-    mermaPct: number;
-  }[] = [];
-  try {
-    const crudo = JSON.parse(String(formData.get("ingredientes_json") ?? "[]"));
-    if (Array.isArray(crudo)) {
-      lineas = crudo
-        .filter((l) => l && l.itemId && Number(l.cantidad) > 0)
-        .map((l) => ({
-          tipoItem: l.tipoItem === "subreceta" ? "subreceta" : "insumo",
-          itemId: String(l.itemId),
-          cantidad: Number(l.cantidad),
-          unidadCodigo: l.unidadCodigo ? String(l.unidadCodigo) : null,
-          mermaPct: Number(l.mermaPct) || 0,
-        }));
-    }
-  } catch {
+  const lineas = parsearLineas(formData);
+  if (lineas === null) {
     return { error: "No se pudo leer la lista de ingredientes." };
   }
 
@@ -80,8 +86,54 @@ export async function crearSubrecetaCompleta(
     return { error: resultado.error };
   }
 
+  await registrarHistorialSubreceta(resultado.id, "creacion");
+
   revalidatePath("/subrecetas");
   redirect(`/subrecetas/${resultado.id}?sede=${sedeId}`);
+}
+
+/**
+ * Actualiza una subreceta existente y reemplaza toda su lista de
+ * ingredientes — usa la misma pantalla "Nueva subreceta" (SubrecetaForm)
+ * que la creación, igual formato que Recetas (`/subrecetas/nueva?edit=ID`
+ * en vez de la pantalla simple que había antes). No toca el insumo
+ * maestro vinculado — eso se define una sola vez, al crear.
+ */
+export async function actualizarSubrecetaCompleta(
+  _estadoPrevio: EstadoSubreceta,
+  formData: FormData
+): Promise<EstadoSubreceta> {
+  const id = String(formData.get("id") ?? "");
+  const sedeId = String(formData.get("sede_id") ?? "");
+  const nombre = String(formData.get("nombre") ?? "").trim();
+  if (!id || !sedeId || !nombre) {
+    return { error: "Falta el nombre de la subreceta." };
+  }
+
+  const lineas = parsearLineas(formData);
+  if (lineas === null) {
+    return { error: "No se pudo leer la lista de ingredientes." };
+  }
+
+  const resultado = await actualizarSubrecetaConIngredientes({
+    id,
+    sedeId,
+    nombre,
+    rendimiento: Number(formData.get("rendimiento") ?? 0) || null,
+    unidadRendimientoCodigo: String(formData.get("unidad_rendimiento_codigo") ?? "") || null,
+    desvioPct: Number(formData.get("desvio_pct") ?? 0) / 100,
+    lineas,
+  });
+
+  if ("error" in resultado) {
+    return { error: `No se pudo actualizar la subreceta: ${resultado.error}` };
+  }
+
+  await registrarHistorialSubreceta(id, "edicion");
+
+  revalidatePath("/subrecetas");
+  revalidatePath(`/subrecetas/${id}`);
+  redirect(`/subrecetas/${id}?sede=${sedeId}`);
 }
 
 /**
@@ -98,58 +150,29 @@ export async function actualizarFotoSubreceta(subrecetaId: string, url: string) 
   revalidatePath("/recetario");
 }
 
-export async function actualizarSubreceta(formData: FormData) {
-  const id = String(formData.get("id") ?? "");
-  const nombre = String(formData.get("nombre") ?? "").trim();
-  if (!id || !nombre) return;
+/**
+ * Guarda la ficha técnica de la subreceta (tiempo de preparación, gramaje,
+ * preparación, emplatado, notas) — mismo patrón que `guardarFicha`
+ * (recetas/actions.ts), pero en `fichas_tecnicas_subreceta`.
+ */
+export async function guardarFichaSubreceta(formData: FormData) {
+  const subrecetaId = String(formData.get("subreceta_id") ?? "");
+  if (!subrecetaId) return;
 
   const supabase = createClient();
-  await supabase
-    .from("subrecetas")
-    .update({
-      nombre,
-      rendimiento: Number(formData.get("rendimiento") ?? 0) || null,
-      unidad_rendimiento_codigo:
-        String(formData.get("unidad_rendimiento_codigo") ?? "") || null,
-      merma_pct: Number(formData.get("merma_pct") ?? 0) / 100,
-      desvio_pct: Number(formData.get("desvio_pct") ?? 0) / 100,
-      activo: formData.get("activo") === "on",
-    })
-    .eq("id", id);
+  await supabase.from("fichas_tecnicas_subreceta").upsert(
+    {
+      subreceta_id: subrecetaId,
+      sede_id: String(formData.get("sede_id") ?? ""),
+      preparacion: String(formData.get("preparacion") ?? "").trim() || null,
+      emplatado: String(formData.get("emplatado") ?? "").trim() || null,
+      notas: String(formData.get("notas") ?? "").trim() || null,
+      tiempo_min: Number(formData.get("tiempo_min") ?? 0) || null,
+      gramaje_porcion: Number(formData.get("gramaje_porcion") ?? 0) || null,
+    },
+    { onConflict: "subreceta_id" }
+  );
 
-  await recalcularSubreceta(id);
-  revalidatePath(`/subrecetas/${id}`);
-}
-
-export async function agregarIngredienteSubreceta(formData: FormData) {
-  const subrecetaId = String(formData.get("subreceta_id") ?? "");
-  const sedeId = String(formData.get("sede_id") ?? "");
-  const tipoItem = String(formData.get("tipo_item") ?? "insumo") as "insumo" | "subreceta";
-  const cantidad = Number(formData.get("cantidad") ?? 0);
-  if (!subrecetaId || !cantidad) return;
-
-  await agregarLineaIngrediente({
-    sedeId,
-    subrecetaDuenaId: subrecetaId,
-    tipoItem,
-    insumoId: tipoItem === "insumo" ? String(formData.get("insumo_id") ?? "") : undefined,
-    subrecetaId: tipoItem === "subreceta" ? String(formData.get("subreceta_ref_id") ?? "") : undefined,
-    cantidad,
-    unidadCodigo: String(formData.get("unidad_codigo") ?? "") || null,
-    mermaPct: Number(formData.get("merma_pct") ?? 0) / 100,
-    orden: Number(formData.get("orden") ?? 0),
-  });
-
-  await recalcularSubreceta(subrecetaId);
-  revalidatePath(`/subrecetas/${subrecetaId}`);
-}
-
-export async function eliminarIngredienteSubreceta(formData: FormData) {
-  const id = String(formData.get("id") ?? "");
-  const subrecetaId = String(formData.get("subreceta_id") ?? "");
-  if (!id || !subrecetaId) return;
-
-  await eliminarLineaIngrediente(id);
-  await recalcularSubreceta(subrecetaId);
+  await registrarHistorialSubreceta(subrecetaId, "ficha_tecnica");
   revalidatePath(`/subrecetas/${subrecetaId}`);
 }
