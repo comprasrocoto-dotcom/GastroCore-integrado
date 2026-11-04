@@ -139,3 +139,35 @@ export async function listarUnidades() {
   if (error || !data) return [];
   return data as { codigo: string; nombre: string }[];
 }
+
+/**
+ * Último % de variación de precio de cada insumo de la sede (27/10),
+ * para la "alerta roja" de Configuración — compara `coste` contra
+ * `coste_anterior` del registro más reciente en `precios_historicos`
+ * (ya se guarda ahí cada vez que cambia el costo de un insumo). Devuelve
+ * un mapa `insumo_id -> % de variación` (puede ser negativo si bajó).
+ */
+export async function obtenerUltimasVariaciones(
+  sedeId: string
+): Promise<Record<string, number>> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("precios_historicos")
+    .select("insumo_id, coste_anterior, diferencia, fecha")
+    .eq("sede_id", sedeId)
+    .order("fecha", { ascending: false })
+    .limit(500);
+
+  if (error || !data) return {};
+
+  const variaciones: Record<string, number> = {};
+  for (const fila of data) {
+    const insumoId = fila.insumo_id as string;
+    if (insumoId in variaciones) continue; // ya se guardó la más reciente de este insumo
+    const costeAnterior = fila.coste_anterior === null ? null : Number(fila.coste_anterior);
+    const diferencia = fila.diferencia === null ? null : Number(fila.diferencia);
+    if (!costeAnterior || diferencia === null) continue;
+    variaciones[insumoId] = (diferencia / costeAnterior) * 100;
+  }
+  return variaciones;
+}
