@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useFormState, useFormStatus } from "react-dom";
 import { actualizarUsuario, type EstadoUsuario, type UsuarioParaEditar } from "./actions";
 import type { MarcaAdmin } from "@/lib/data/marcas";
+import type { RolRow } from "@/lib/data/roles";
 import { MODULOS_DISPONIBLES, type Modulo } from "@/lib/auth/modulos";
 
 const ETIQUETA_MODULO: Record<Modulo, string> = {
@@ -30,20 +31,24 @@ function BotonGuardar() {
 }
 
 /**
- * Editar un usuario que ya existe — sedes, módulos permitidos y área.
- * A propósito no se puede cambiar nombre, correo, contraseña ni rol
- * desde acá (ver `actualizarUsuario` en actions.ts); por eso este
- * formulario es más chico que `CrearUsuarioForm`, aunque compartan el
- * mismo patrón de checkboxes para sedes y módulos.
+ * Editar un usuario que ya existe — rol, sedes, módulos permitidos y
+ * área. A propósito no se puede cambiar nombre, correo ni contraseña
+ * desde acá (ver `actualizarUsuario` en actions.ts). El rol sí se puede
+ * cambiar desde el 27/10, junto con los roles reales.
  */
 export default function EditarUsuarioForm({
   usuario,
   marcas,
+  roles,
 }: {
   usuario: UsuarioParaEditar;
   marcas: MarcaAdmin[];
+  roles: RolRow[];
 }) {
   const [estado, formAction] = useFormState(actualizarUsuario, estadoInicial);
+
+  const [rol, setRol] = useState<string>(usuario.rol);
+  const rolSeleccionado = roles.find((r) => r.nombre === rol);
 
   // El alcance inicial se infiere de los datos ya guardados: si tiene
   // sedes asignadas es "sede", si tiene marca_id sin sedes es "marca", y
@@ -60,7 +65,7 @@ export default function EditarUsuarioForm({
   );
   const [area, setArea] = useState<"" | "BAR" | "COCINA">(usuario.area ?? "");
 
-  const alcanceEfectivo = usuario.rol === "Admin" ? alcance : "sede";
+  const alcanceEfectivo = rolSeleccionado?.accesoTotal ? alcance : "sede";
 
   const marcasConSedes = useMemo(() => marcas.filter((m) => m.sedes.length > 0), [marcas]);
 
@@ -83,14 +88,31 @@ export default function EditarUsuarioForm({
       <div>
         <p className="text-sm font-medium">{usuario.nombre}</p>
         <p className="text-xs" style={{ color: "var(--muted)" }}>
-          {usuario.email} · {usuario.rol}
+          {usuario.email}
         </p>
         <p className="mt-1 text-xs" style={{ color: "var(--muted)" }}>
-          El nombre, el correo, la contraseña y el rol no se cambian desde acá.
+          El nombre, el correo y la contraseña no se cambian desde acá.
         </p>
       </div>
 
-      {usuario.rol === "Admin" && (
+      <label className="flex flex-col gap-1">
+        <span className="text-xs font-medium uppercase tracking-wide text-slate-500">Rol</span>
+        <select
+          name="rol"
+          value={rol}
+          onChange={(e) => setRol(e.target.value)}
+          className={inputClase}
+        >
+          {roles.map((r) => (
+            <option key={r.id} value={r.nombre}>
+              {r.nombre}
+              {r.accesoTotal ? " — acceso total" : ""}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      {rolSeleccionado?.accesoTotal && (
         <label className="flex flex-col gap-1">
           <span className="text-xs font-medium uppercase tracking-wide text-slate-500">
             Alcance
@@ -108,7 +130,7 @@ export default function EditarUsuarioForm({
         </label>
       )}
 
-      {usuario.rol !== "Admin" && <input type="hidden" name="alcance" value="sede" />}
+      {!rolSeleccionado?.accesoTotal && <input type="hidden" name="alcance" value="sede" />}
 
       {alcanceEfectivo === "marca" && (
         <label className="flex flex-col gap-1">
