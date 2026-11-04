@@ -2,13 +2,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getUsuarioActual, esMaestro } from "@/lib/auth/usuario-actual";
 import { listarMarcasConSedes } from "@/lib/data/marcas";
+import { listarRoles } from "@/lib/data/roles";
 import { obtenerUsuarioParaEditar } from "../actions";
 import EditarUsuarioForm from "../EditarUsuarioForm";
 
 /**
- * Editar un usuario que ya existe (sedes, módulos permitidos, área) —
- * reservada al Admin multi-marca, igual que el resto de "Usuarios". No
- * se puede cambiar nombre, correo, contraseña ni rol desde acá, ver
+ * Editar un usuario que ya existe (rol, sedes, módulos permitidos, área)
+ * — reservada al Admin multi-marca, igual que el resto de "Usuarios". No
+ * se puede cambiar nombre, correo ni contraseña desde acá, ver
  * `EditarUsuarioForm`.
  */
 export default async function EditarUsuarioPage({
@@ -27,9 +28,10 @@ export default async function EditarUsuarioPage({
     );
   }
 
-  const [usuarioEditar, marcas] = await Promise.all([
+  const [usuarioEditar, marcas, roles] = await Promise.all([
     obtenerUsuarioParaEditar(params.id),
     listarMarcasConSedes(),
+    listarRoles(),
   ]);
 
   if (!usuarioEditar) notFound();
@@ -46,7 +48,7 @@ export default async function EditarUsuarioPage({
         <h1 className="text-xl font-semibold">Editar usuario</h1>
       </div>
 
-      <EditarUsuarioForm usuario={usuarioEditar} marcas={marcas} />
+      <EditarUsuarioForm usuario={usuarioEditar} marcas={marcas} roles={roles} />
     </div>
   );
 }
