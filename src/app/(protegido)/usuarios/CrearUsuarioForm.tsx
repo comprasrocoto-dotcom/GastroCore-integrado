@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useFormState, useFormStatus } from "react-dom";
 import { crearUsuario, type EstadoUsuario } from "./actions";
 import type { MarcaAdmin } from "@/lib/data/marcas";
+import type { RolRow } from "@/lib/data/roles";
 import { MODULOS_DISPONIBLES, type Modulo } from "@/lib/auth/modulos";
 
 const ETIQUETA_MODULO: Record<Modulo, string> = {
@@ -29,9 +30,16 @@ function BotonCrear() {
   );
 }
 
-export default function CrearUsuarioForm({ marcas }: { marcas: MarcaAdmin[] }) {
+export default function CrearUsuarioForm({
+  marcas,
+  roles,
+}: {
+  marcas: MarcaAdmin[];
+  roles: RolRow[];
+}) {
   const [estado, formAction] = useFormState(crearUsuario, estadoInicial);
-  const [rol, setRol] = useState<"Admin" | "Chef" | "Lector">("Chef");
+  const rolPorDefecto = roles.find((r) => r.nombre === "Chef") ?? roles[0];
+  const [rol, setRol] = useState<string>(rolPorDefecto?.nombre ?? "");
   const [alcance, setAlcance] = useState<"todas" | "marca" | "sede">("sede");
   const [sedesElegidas, setSedesElegidas] = useState<string[]>([]);
   // Módulos y área (26/10): por defecto un usuario nuevo ve todo, igual
@@ -41,9 +49,11 @@ export default function CrearUsuarioForm({ marcas }: { marcas: MarcaAdmin[] }) {
   const [modulosElegidos, setModulosElegidos] = useState<Modulo[]>([]);
   const [area, setArea] = useState<"" | "BAR" | "COCINA">("");
 
-  // Chef y Lector siempre son de una o varias sedes puntuales — no tiene
-  // sentido ofrecerles "todas las marcas" o "una marca completa".
-  const alcanceEfectivo = rol === "Admin" ? alcance : "sede";
+  const rolSeleccionado = roles.find((r) => r.nombre === rol);
+  // Solo un rol con acceso total (como Admin) puede ser de "toda una
+  // marca" o "todas las marcas" — el resto siempre son de una o varias
+  // sedes puntuales.
+  const alcanceEfectivo = rolSeleccionado?.accesoTotal ? alcance : "sede";
 
   // Solo las marcas que tienen al menos una sede activa, para no mostrar
   // un grupo vacío en la lista de checkboxes.
@@ -101,16 +111,19 @@ export default function CrearUsuarioForm({ marcas }: { marcas: MarcaAdmin[] }) {
         <select
           name="rol"
           value={rol}
-          onChange={(e) => setRol(e.target.value as typeof rol)}
+          onChange={(e) => setRol(e.target.value)}
           className={inputClase}
         >
-          <option value="Chef">Chef — carga y edita recetas/insumos de su sede</option>
-          <option value="Lector">Lector — solo puede ver (ej. Recetario)</option>
-          <option value="Admin">Admin — administra, ve costos y precios</option>
+          {roles.map((r) => (
+            <option key={r.id} value={r.nombre}>
+              {r.nombre}
+              {r.accesoTotal ? " — acceso total" : ""}
+            </option>
+          ))}
         </select>
       </label>
 
-      {rol === "Admin" && (
+      {rolSeleccionado?.accesoTotal && (
         <label className="flex flex-col gap-1">
           <span className="text-xs font-medium uppercase tracking-wide text-slate-500">
             Alcance
@@ -128,7 +141,7 @@ export default function CrearUsuarioForm({ marcas }: { marcas: MarcaAdmin[] }) {
         </label>
       )}
 
-      {rol !== "Admin" && <input type="hidden" name="alcance" value="sede" />}
+      {!rolSeleccionado?.accesoTotal && <input type="hidden" name="alcance" value="sede" />}
 
       {alcanceEfectivo === "marca" && (
         <label className="flex flex-col gap-1">
