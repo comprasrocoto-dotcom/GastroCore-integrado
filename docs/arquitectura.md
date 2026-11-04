@@ -1173,3 +1173,130 @@ tabla nueva `plantillas_permisos`.
 
 No se modificó ni se tocó el GastroCore viejo (`gastro-core.vercel.app`)
 en ningún momento.
+
+## Roles reales + Configuración v2 (27/10)
+
+Mariluz mandó 4 capturas del Gastro Core de referencia (una versión
+distinta, más completa, del sistema viejo) y fue clara: a nuestra pantalla
+de Configuración "le falta todo esto" — no tenía roles de verdad ni forma
+de ajustarlos, ni la paleta de colores del recetario público. Pidió que
+Configuración quedara con todos esos campos, igual que esa referencia.
+
+**Lo más importante de esta etapa: los roles de usuario ahora son de
+verdad, no solo una plantilla.** Antes (ver la sección anterior, 20/10), la
+seguridad real seguía dependiendo únicamente de que el campo `rol` de un
+usuario fuera literalmente el texto "Admin" — las "plantillas de permisos"
+eran solo un atajo para copiar casilleros, no cambiaban esa seguridad. Se
+le preguntó a Mariluz explícitamente qué quería, y contestó **"Quiero
+roles reales editables"**. Se le planteó un plan concreto y lo aprobó
+("Sí, así como lo planteás") antes de tocar nada:
+
+- Los tres roles de siempre — **Admin, Chef y Lector** — ahora son "roles
+  de sistema": siguen funcionando exactamente igual que antes (Admin con
+  acceso total, Chef y Lector sin él) y están protegidos — no se pueden
+  renombrar, borrar ni cambiarles el acceso total desde la pantalla, para
+  que nadie rompa la seguridad de base por accidente.
+- En Configuración, dentro de "Administración", la tarjeta "Roles y
+  permisos" ahora permite **crear roles nuevos de verdad** (ej.
+  "Supervisor"), cada uno con su propio nombre, marcando si tiene "acceso
+  total" (el equivalente exacto a ser Admin: crear marcas, sedes, usuarios
+  y roles) o no, y con las pantallas y el área (Bar/Cocina) que ese rol va
+  a dejar precargadas por defecto.
+- Esos roles nuevos se pueden **asignar a usuarios que ya existen**: al
+  hacerlo, de verdad les cambia el rol (su nivel de seguridad real, no solo
+  una copia de casilleros) y les precarga las pantallas/área del rol
+  elegido.
+- En la pantalla de Usuarios, tanto al crear como al editar un usuario
+  existente, el rol se elige de una lista que ahora incluye cualquier rol
+  nuevo que se haya creado — antes, al editar un usuario, el rol ni
+  siquiera se podía cambiar desde esa pantalla.
+- **Nada de esto tocó la seguridad que protege los datos operativos**
+  (insumos, recetas, subrecetas, familias, precios, fichas técnicas): esa
+  parte sigue aislada por sede exactamente igual que siempre. Solo se
+  tocó la pequeña parte de la seguridad que dependía literalmente de la
+  palabra "Admin" (6 reglas puntuales, más las dos funciones que deciden
+  quién es "maestro" o "admin de una marca").
+- Se encontró y corrigió, antes de entregar esto, una inconsistencia real:
+  la base de datos ya reconocía el "acceso total" de un rol nuevo, pero el
+  código de la aplicación todavía miraba la palabra "Admin" directamente
+  en vez de esa nueva propiedad — un rol nuevo con acceso total hubiera
+  quedado bloqueado en la práctica (sin ver Usuarios, Marcas, etc.) aunque
+  la base de datos sí lo autorizara. Se revisó archivo por archivo todo el
+  código que dependía de esa palabra y se corrigió para que mire el
+  "acceso total" real del rol, no el nombre.
+- **Nota técnica (transparencia):** la tabla vieja de "plantillas de
+  permisos" (`plantillas_permisos`), que las nuevas reglas reemplazan, no
+  se pudo borrar de la base de datos en esta etapa — una limitación del
+  entorno de trabajo impidió confirmar ese borrado puntual. Queda como una
+  tabla vacía, sin usar y sin ningún riesgo (nadie la lee ni la escribe),
+  y se puede borrar más adelante sin apuro.
+
+**Las otras 6 funciones pedidas, copiadas de la referencia:**
+
+- **Estilo del recetario:** una tarjeta nueva en Configuración para elegir,
+  por sede, uno de varios temas de color para el Recetario público (el que
+  usa cocina) — cada tema cambia el banner de arriba y los colores de las
+  categorías. Se guarda por sede, igual que las claves de Bar/Cocina.
+- **Food cost objetivo por familia, ahora editable desde Configuración:**
+  el campo ya existía (ver la sección del 07/10) pero solo se podía cargar
+  entrando a Familias una por una. Ahora también hay una lista rápida en
+  Configuración para ajustarlo sin salir de ahí.
+- **Mermas estándar por insumo:** una tarjeta con buscador para encontrar
+  un insumo y ajustarle su % de merma estándar directamente, sin tener que
+  entrar a la ficha completa del insumo.
+- **Alerta de insumo:** un nuevo campo "Alerta roja si un insumo sube más
+  de X%" en Parámetros de costeo. Cuando está activado, en la pantalla de
+  **Insumos** cualquier insumo cuyo último cambio de costo haya superado
+  ese porcentaje aparece resaltado en rojo con un ícono de alerta — se
+  eligió ese lugar (la lista de Insumos) en vez de otro porque fue lo que
+  Mariluz prefirió al preguntarle.
+- **"Poner costos al día":** un botón en Configuración que recalcula de
+  una sola vez el costo de todas las subrecetas y todas las recetas de la
+  sede, usando el mismo cálculo que ya se usa siempre (no se inventó
+  ninguna fórmula nueva) — útil después de cambiar varios precios de
+  insumos de golpe.
+- **Respaldo de la base (Excel):** un botón para descargar un Excel con
+  una copia completa de los insumos, familias, subrecetas y recetas de la
+  sede en ese momento — pensado como respaldo manual, no reemplaza ningún
+  respaldo automático.
+- **Carpeta de fotos:** Mariluz preguntó directamente si las fotos se
+  podían guardar en Supabase — la respuesta es que ya se guardan ahí desde
+  hace tiempo (bucket `fotos-recetas` de Supabase Storage, no Google
+  Drive), así que no hubo que construir nada nuevo: solo se agregó una
+  tarjeta informativa en Configuración que lo aclara.
+- **Lo único de la referencia que Mariluz pidió explícitamente NO hacer:**
+  la "Rotación de credenciales" (un token técnico entre Apps Script y
+  Vercel) — dijo que no aplica, así que se omitió a propósito.
+
+**Verificación antes de subir:** se revisó, archivo por archivo, que no
+quedara ninguna otra comparación de seguridad escondida que todavía
+dependiera literalmente de la palabra "Admin" (incluyendo el flujo de
+login) y se corrió de nuevo la compilación completa de TypeScript sobre
+todo el código nuevo antes de tocar GitHub, igual que en etapas
+anteriores.
+
+Archivos tocados: `src/lib/data/roles.ts` (nuevo),
+`src/app/(protegido)/configuracion/roles-actions.ts` (nuevo, reemplaza a
+`plantillas-actions.ts`), `src/app/(protegido)/configuracion/RolesPermisos.tsx`
+(nuevo, reemplaza a `PlantillasPermisos.tsx`),
+`src/lib/data/configuracion.ts`, `src/app/(protegido)/configuracion/actions.ts`,
+`src/app/(protegido)/configuracion/page.tsx` (reescrita),
+`src/app/(protegido)/configuracion/MermasInsumo.tsx` (nuevo),
+`src/app/(protegido)/configuracion/EstiloRecetario.tsx` (nuevo),
+`src/app/(protegido)/familias/actions.ts`,
+`src/app/(protegido)/recetario/RecetarioExplorador.tsx`,
+`src/app/(protegido)/recetario/page.tsx`,
+`src/lib/excel/respaldo.ts` (nuevo),
+`src/app/(protegido)/configuracion/respaldo/route.ts` (nuevo),
+`src/lib/data/insumos.ts`, `src/app/(protegido)/insumos/page.tsx`,
+`src/lib/auth/usuario-actual.ts`,
+`src/app/(protegido)/usuarios/actions.ts`,
+`src/app/(protegido)/usuarios/CrearUsuarioForm.tsx`,
+`src/app/(protegido)/usuarios/EditarUsuarioForm.tsx`,
+`src/app/(protegido)/usuarios/page.tsx`,
+`src/app/(protegido)/usuarios/[id]/page.tsx`, y en la base de datos la
+tabla nueva `roles` (con `plantillas_permisos` quedando vacía y sin uso,
+ver nota técnica arriba).
+
+No se modificó ni se tocó el GastroCore viejo (`gastro-core.vercel.app`)
+en ningún momento.
