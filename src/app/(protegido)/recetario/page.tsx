@@ -2,7 +2,8 @@ import { cookies } from "next/headers";
 import { getUsuarioActual, tieneModulo } from "@/lib/auth/usuario-actual";
 import { getSedesVisibles, resolverSedeActiva } from "@/lib/data/sedes";
 import { listarRecetario } from "@/lib/data/recetario";
-import { obtenerClavesRecetario } from "@/lib/data/configuracion";
+import { obtenerClavesRecetario, obtenerIdentidad } from "@/lib/data/configuracion";
+import { obtenerTema } from "@/lib/temas-recetario";
 import RecetarioExplorador from "./RecetarioExplorador";
 import RecetarioClaveGate from "./RecetarioClaveGate";
 import { COOKIE_AREA_RECETARIO } from "./actions";
@@ -36,7 +37,7 @@ export default async function RecetarioPage({
   // Mientras nadie cargue una clave, el Recetario se ve exactamente
   // como siempre.
   const claves = await obtenerClavesRecetario(sedeActiva.id);
-  const candadoActivo = (claves.bar || claves.cocina) && usuario.rol !== "Admin" && !usuario.area;
+  const candadoActivo = (claves.bar || claves.cocina) && !usuario.accesoTotal && !usuario.area;
 
   let area: "BAR" | "COCINA" | null = usuario.area ?? null;
   if (!area && candadoActivo) {
@@ -53,6 +54,9 @@ export default async function RecetarioPage({
       />
     );
   }
+
+  const temaId = await obtenerIdentidad(sedeActiva.id);
+  const tema = obtenerTema(temaId);
 
   const itemsSinFiltrar = await listarRecetario(sedeActiva.id);
   const items = area
@@ -75,7 +79,7 @@ export default async function RecetarioPage({
         </p>
       </div>
 
-      <RecetarioExplorador items={items} />
+      <RecetarioExplorador items={items} tema={tema} />
     </div>
   );
 }
