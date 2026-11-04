@@ -10,6 +10,7 @@ import {
   type Rol,
   type Modulo,
 } from "@/lib/auth/usuario-actual";
+import { listarRoles } from "@/lib/data/roles";
 
 export type EstadoUsuario = { error: string | null };
 
@@ -55,8 +56,6 @@ async function requireMaestro() {
   return usuario;
 }
 
-const ROLES_VALIDOS: Rol[] = ["Admin", "Chef", "Lector"];
-
 export async function crearUsuario(
   _estadoPrevio: EstadoUsuario,
   formData: FormData
@@ -85,7 +84,10 @@ export async function crearUsuario(
   if (password.length < 8) {
     return { error: "La contraseña tiene que tener al menos 8 caracteres." };
   }
-  if (!ROLES_VALIDOS.includes(rol)) {
+
+  const roles = await listarRoles();
+  const rolElegido = roles.find((r) => r.nombre === rol);
+  if (!rolElegido) {
     return { error: "Elegí un rol válido." };
   }
   if (alcance === "sede" && sedeIds.length === 0) {
@@ -94,8 +96,8 @@ export async function crearUsuario(
   if (alcance === "marca" && !marcaId) {
     return { error: "Elegí a qué marca pertenece este usuario." };
   }
-  if (rol !== "Admin" && alcance !== "sede") {
-    return { error: "Chef y Lector tienen que estar asignados a una o varias sedes puntuales." };
+  if (!rolElegido.accesoTotal && alcance !== "sede") {
+    return { error: "Este rol tiene que estar asignado a una o varias sedes puntuales (no a toda una marca o a todas)." };
   }
 
   let adminClient;
@@ -182,11 +184,12 @@ export async function cambiarEstadoUsuario(formData: FormData) {
 
 
 /**
- * Editar un usuario que ya existe: sedes asignadas (o marca/alcance si es
- * Admin), módulos permitidos y área. A propósito NO se puede cambiar
- * desde acá el nombre, el correo, la contraseña ni el rol — son datos
- * más delicados (login/identidad) que quedan fuera de esta pantalla por
- * ahora; si hace falta tocarlos, se avisa y se construye aparte.
+ * Editar un usuario que ya existe: rol, sedes asignadas (o marca/alcance
+ * según el rol), módulos permitidos y área. A propósito NO se puede
+ * cambiar desde acá el nombre, el correo ni la contraseña — son datos
+ * de login/identidad que quedan fuera de esta pantalla por ahora; si
+ * hace falta tocarlos, se avisa y se construye aparte. El rol sí se
+ * puede cambiar desde el 27/10, junto con los roles reales.
  */
 export async function actualizarUsuario(
   _estadoPrevio: EstadoUsuario,
@@ -207,7 +210,13 @@ export async function actualizarUsuario(
   if (errorExistente || !usuarioExistente) {
     return { error: "No se encontró el usuario." };
   }
-  const rol = usuarioExistente.rol as Rol;
+
+  const rolSolicitado = String(formData.get("rol") ?? usuarioExistente.rol) as Rol;
+  const roles = await listarRoles();
+  const rolElegido = roles.find((r) => r.nombre === rolSolicitado);
+  if (!rolElegido) {
+    return { error: "Elegí un rol válido." };
+  }
 
   const alcance = String(formData.get("alcance") ?? "sede");
   const marcaId = String(formData.get("marca_id") ?? "") || null;
@@ -220,13 +229,14 @@ export async function actualizarUsuario(
   if (alcance === "marca" && !marcaId) {
     return { error: "Elegí a qué marca pertenece este usuario." };
   }
-  if (rol !== "Admin" && alcance !== "sede") {
-    return { error: "Chef y Lector tienen que estar asignados a una o varias sedes puntuales." };
+  if (!rolElegido.accesoTotal && alcance !== "sede") {
+    return { error: "Este rol tiene que estar asignado a una o varias sedes puntuales (no a toda una marca o a todas)." };
   }
 
   const { error: errorUpdate } = await supabase
     .from("usuarios")
     .update({
+      rol: rolElegido.nombre,
       marca_id: alcance === "marca" ? marcaId : null,
       modulos,
       area,
