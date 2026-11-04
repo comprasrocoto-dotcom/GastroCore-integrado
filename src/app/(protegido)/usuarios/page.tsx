@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getUsuarioActual, esMaestro } from "@/lib/auth/usuario-actual";
 import { createClient } from "@/lib/supabase/server";
 import { listarMarcasConSedes } from "@/lib/data/marcas";
+import { listarRoles } from "@/lib/data/roles";
 import { cambiarEstadoUsuario } from "./actions";
 import CrearUsuarioForm from "./CrearUsuarioForm";
 
@@ -74,7 +75,11 @@ export default async function UsuariosPage() {
     );
   }
 
-  const [usuarios, marcas] = await Promise.all([listarUsuarios(), listarMarcasConSedes()]);
+  const [usuarios, marcas, roles] = await Promise.all([
+    listarUsuarios(),
+    listarMarcasConSedes(),
+    listarRoles(),
+  ]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -85,7 +90,7 @@ export default async function UsuariosPage() {
         </p>
       </div>
 
-      <CrearUsuarioForm marcas={marcas} />
+      <CrearUsuarioForm marcas={marcas} roles={roles} />
 
       <div className="erp-scroll">
         <table className="erp-table">
