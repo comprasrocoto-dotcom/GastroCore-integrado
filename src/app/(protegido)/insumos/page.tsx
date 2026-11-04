@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { getUsuarioActual, tieneModulo } from "@/lib/auth/usuario-actual";
 import { getSedesVisibles, resolverSedeActiva } from "@/lib/data/sedes";
-import { listarInsumos } from "@/lib/data/insumos";
+import { listarInsumos, obtenerUltimasVariaciones } from "@/lib/data/insumos";
+import { obtenerConfiguracionCosteo } from "@/lib/data/configuracion";
 
 export default async function InsumosPage({
   searchParams,
@@ -27,10 +28,13 @@ export default async function InsumosPage({
   }
 
   const pagina = Number(searchParams.pagina ?? "1") || 1;
-  const { insumos, total, totalPaginas } = await listarInsumos(sedeActiva.id, {
-    q: searchParams.q,
-    pagina,
-  });
+  const [{ insumos, total, totalPaginas }, config, variaciones] = await Promise.all([
+    listarInsumos(sedeActiva.id, { q: searchParams.q, pagina }),
+    obtenerConfiguracionCosteo(sedeActiva.id),
+    obtenerUltimasVariaciones(sedeActiva.id),
+  ]);
+
+  const umbralAlerta = config.alertaInsumoPct !== null ? config.alertaInsumoPct * 100 : null;
 
   const qParam = searchParams.q ? `&q=${encodeURIComponent(searchParams.q)}` : "";
 
@@ -75,27 +79,44 @@ export default async function InsumosPage({
               </tr>
             </thead>
             <tbody>
-              {insumos.map((i) => (
-                <tr key={i.id}>
-                  <td className="font-medium">{i.articulo}</td>
-                  <td style={{ color: "var(--muted)" }}>{i.subarticulo ?? "—"}</td>
-                  <td style={{ color: "var(--muted)" }}>
-                    {i.familia_nombre ? `${i.familia_nombre} / ${i.subfamilia_nombre}` : "—"}
-                  </td>
-                  <td style={{ color: "var(--muted)" }}>{i.unidad_codigo ?? "—"}</td>
-                  <td className="text-right fin-value">
-                    {i.coste.toLocaleString("es-CO", {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}
-                  </td>
-                  <td className="text-right">
-                    <Link href={`/insumos/${i.id}?sede=${sedeActiva.id}`} className="text-sm font-medium text-[#2563EB] hover:underline">
-                      Editar
-                    </Link>
-                  </td>
-                </tr>
-              ))}
+              {insumos.map((i) => {
+                const variacion = variaciones[i.id];
+                const alerta =
+                  umbralAlerta !== null &&
+                  typeof variacion === "number" &&
+                  Math.abs(variacion) >= umbralAlerta;
+                return (
+                  <tr key={i.id} style={alerta ? { background: "#fef2f2" } : undefined}>
+                    <td className="font-medium">
+                      {alerta && (
+                        <span
+                          title={`Subió ${variacion.toFixed(1)}% en el último cambio de precio`}
+                          className="mr-1"
+                        >
+                          🔴
+                        </span>
+                      )}
+                      {i.articulo}
+                    </td>
+                    <td style={{ color: "var(--muted)" }}>{i.subarticulo ?? "—"}</td>
+                    <td style={{ color: "var(--muted)" }}>
+                      {i.familia_nombre ? `${i.familia_nombre} / ${i.subfamilia_nombre}` : "—"}
+                    </td>
+                    <td style={{ color: "var(--muted)" }}>{i.unidad_codigo ?? "—"}</td>
+                    <td className="text-right fin-value">
+                      {i.coste.toLocaleString("es-CO", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
+                    </td>
+                    <td className="text-right">
+                      <Link href={`/insumos/${i.id}?sede=${sedeActiva.id}`} className="text-sm font-medium text-[#2563EB] hover:underline">
+                        Editar
+                      </Link>
+                    </td>
+                  </tr>
+                );
+              })}
               {insumos.length === 0 && (
                 <tr>
                   <td colSpan={6} className="px-4 py-6 text-center text-slate-400">
