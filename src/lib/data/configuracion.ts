@@ -8,6 +8,13 @@ export type ConfiguracionCosteo = {
   fcObjetivo: number;
   fcObjetivoPanel: number;
   iva: number;
+  /**
+   * Umbral para la "alerta roja" de Insumos (27/10): si el último cambio
+   * de precio de un insumo supera este % (en cualquier sentido), se
+   * resalta en la lista de Insumos. `null` = alerta desactivada, no
+   * resalta nada (valor por defecto para no sorprender a nadie).
+   */
+  alertaInsumoPct: number | null;
 };
 
 /**
@@ -20,6 +27,7 @@ export const CONFIGURACION_COSTEO_DEFECTO: ConfiguracionCosteo = {
   fcObjetivo: FC_OBJ,
   fcObjetivoPanel: FC_OBJ_PANEL,
   iva: INC,
+  alertaInsumoPct: null,
 };
 
 /**
@@ -50,6 +58,8 @@ export async function obtenerConfiguracionCosteo(
         : CONFIGURACION_COSTEO_DEFECTO.fcObjetivoPanel,
     iva:
       typeof valor.iva === "number" ? valor.iva : CONFIGURACION_COSTEO_DEFECTO.iva,
+    alertaInsumoPct:
+      typeof valor.alertaInsumoPct === "number" ? valor.alertaInsumoPct : null,
   };
 }
 
@@ -111,6 +121,44 @@ export async function guardarClavesRecetario(
       clave: CLAVE_CLAVES_RECETARIO,
       sede_id: sedeId,
       valor: datos,
+      actualizado_por: usuarioId,
+    },
+    { onConflict: "clave,sede_id" }
+  );
+}
+
+const CLAVE_IDENTIDAD = "identidad";
+
+/**
+ * "Estilo del recetario" (27/10): cada sede elige uno de los estilos de
+ * `lib/temas-recetario.ts` para el Recetario público. No cambia ninguna
+ * fórmula ni ningún dato, solo el color con el que se ve. Sin estilo
+ * guardado todavía, se usa `TEMA_DEFECTO` ("rocoto").
+ */
+export async function obtenerIdentidad(sedeId: string): Promise<string | null> {
+  const supabase = createClient();
+  const { data } = await supabase
+    .from("configuracion")
+    .select("valor")
+    .eq("clave", CLAVE_IDENTIDAD)
+    .eq("sede_id", sedeId)
+    .maybeSingle();
+
+  const valor = (data?.valor ?? {}) as { temaId?: string };
+  return typeof valor.temaId === "string" ? valor.temaId : null;
+}
+
+export async function guardarIdentidad(
+  sedeId: string,
+  usuarioId: string | null,
+  temaId: string
+) {
+  const supabase = createClient();
+  return supabase.from("configuracion").upsert(
+    {
+      clave: CLAVE_IDENTIDAD,
+      sede_id: sedeId,
+      valor: { temaId },
       actualizado_por: usuarioId,
     },
     { onConflict: "clave,sede_id" }
