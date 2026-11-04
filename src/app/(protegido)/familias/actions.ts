@@ -84,6 +84,27 @@ export async function actualizarCentroCostoFamilia(formData: FormData) {
   revalidatePath("/configuracion");
 }
 
+/**
+ * Igual que `actualizarCentroCostoFamilia` pero para el food cost
+ * objetivo propio de la familia — lo usa la lista "Food cost por
+ * familia" en Configuración (27/10), para no tener que entrar a
+ * Familias a cambiar una excepción puntual.
+ */
+export async function actualizarFoodCostFamilia(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+
+  const supabase = createClient();
+  await supabase
+    .from("familias")
+    .update({ fc_objetivo: fcObjetivoOpcional(formData) })
+    .eq("id", id);
+
+  revalidatePath("/familias");
+  revalidatePath("/recetas");
+  revalidatePath("/configuracion");
+}
+
 export async function crearSubfamilia(formData: FormData) {
   const sedeId = String(formData.get("sede_id") ?? "");
   const familiaId = String(formData.get("familia_id") ?? "");
