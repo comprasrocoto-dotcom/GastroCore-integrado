@@ -2,6 +2,14 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { agregarLineaIngrediente, recalcularSubreceta } from "./ingredientes";
 
+type LineaIngredienteEntrada = {
+  tipoItem: "insumo" | "subreceta";
+  itemId: string;
+  cantidad: number;
+  unidadCodigo: string | null;
+  mermaPct: number;
+};
+
 export type SubrecetaFila = {
   id: string;
   nombre: string;
@@ -228,18 +236,84 @@ export async function obtenerSubreceta(id: string) {
   const { data, error } = await supabase
     .from("subrecetas")
     .select(
-      "id, sede_id, nombre, rendimiento, unidad_rendimiento_codigo, merma_pct, desvio_pct, costo_total, costo_unitario, activo, insumo_id, foto_url"
+      "id, sede_id, nombre, rendimiento, unidad_rendimiento_codigo, merma_pct, desvio_pct, costo_total, costo_unitario, activo, insumo_id, foto_url, creado_en, actualizado_en, sedes(nombre)"
     )
     .eq("id", id)
     .single();
 
   if (error || !data) return null;
+  const { sedes, ...resto } = data as typeof data & { sedes: { nombre: string } | null };
   return {
-    ...data,
+    ...resto,
+    /** Nombre de la sede — se usa en el encabezado del PDF, igual que
+     * `sede_nombre` en `obtenerReceta` (lib/data/recetas.ts). */
+    sede_nombre: (sedes as unknown as { nombre: string } | null)?.nombre ?? null,
     rendimiento: data.rendimiento === null ? null : Number(data.rendimiento),
     merma_pct: Number(data.merma_pct),
     desvio_pct: Number(data.desvio_pct),
     costo_total: Number(data.costo_total),
     costo_unitario: Number(data.costo_unitario),
   };
+}
+
+/**
+ * Actualiza una subreceta existente y reemplaza toda su lista de
+ * ingredientes — misma lógica que `actualizarRecetaConIngredientes`
+ * (lib/data/recetas.ts), usada por la pantalla "Nueva subreceta"
+ * (SubrecetaForm) reutilizada en modo edición
+ * (`/subrecetas/nueva?edit=ID`), igual que ya hace Recetas. No toca el
+ * insumo maestro vinculado (`insumo_id`): una vez creada la subreceta, el
+ * maestro no se puede cambiar desde esta pantalla.
+ */
+export async function actualizarSubrecetaConIngredientes(datos: {
+  id: string;
+  sedeId: string;
+  nombre: string;
+  rendimiento: number | null;
+  unidadRendimientoCodigo: string | null;
+  desvioPct: number;
+  lineas: LineaIngredienteEntrada[];
+}): Promise<{ id: string } | { error: string }> {
+  const supabase = createClient();
+
+  const { error: errorUpdate } = await supabase
+    .from("subrecetas")
+    .update({
+      nombre: datos.nombre,
+      rendimiento: datos.rendimiento,
+      unidad_rendimiento_codigo: datos.unidadRendimientoCodigo,
+      desvio_pct: datos.desvioPct,
+    })
+    .eq("id", datos.id);
+
+  if (errorUpdate) {
+    return { error: errorUpdate.message };
+  }
+
+  const { error: errorDelete } = await supabase
+    .from("ingredientes_receta")
+    .delete()
+    .eq("subreceta_duena_id", datos.id);
+
+  if (errorDelete) {
+    return { error: errorDelete.message };
+  }
+
+  for (const [idx, linea] of datos.lineas.entries()) {
+    await agregarLineaIngrediente({
+      sedeId: datos.sedeId,
+      subrecetaDuenaId: datos.id,
+      tipoItem: linea.tipoItem,
+      insumoId: linea.tipoItem === "insumo" ? linea.itemId : undefined,
+      subrecetaId: linea.tipoItem === "subreceta" ? linea.itemId : undefined,
+      cantidad: linea.cantidad,
+      unidadCodigo: linea.unidadCodigo,
+      mermaPct: linea.mermaPct,
+      orden: idx + 1,
+    });
+  }
+
+  await recalcularSubreceta(datos.id);
+
+  return { id: datos.id };
 }
