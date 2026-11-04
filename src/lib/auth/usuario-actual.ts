@@ -2,7 +2,13 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { MODULOS_DISPONIBLES, type Modulo } from "@/lib/auth/modulos";
 
-export type Rol = "Admin" | "Chef" | "Lector";
+/**
+ * Antes de los roles reales (27/10) esto era literalmente
+ * "Admin" | "Chef" | "Lector" — ahora es el nombre de cualquier fila de
+ * `roles`, así que queda como `string`. Admin/Chef/Lector siguen
+ * existiendo igual, son solo roles de sistema entre varios posibles.
+ */
+export type Rol = string;
 
 // Reexportados para no romper los imports existentes que ya apuntan acá
 // (ej. usuarios/actions.ts) — la lista en sí vive en ./modulos porque ese
@@ -16,6 +22,10 @@ export type UsuarioActual = {
   email: string;
   nombre: string;
   rol: Rol;
+  /** Si el rol de este usuario tiene `acceso_total` en `roles` — esto es
+   * lo que de verdad define "Admin multi-marca"/"Admin de una marca" (ver
+   * esMaestro/esAdminDeMarca), ya no el nombre literal "Admin". */
+  accesoTotal: boolean;
   marca_id: string | null;
   sede_id: string | null;
   activo: boolean;
@@ -41,7 +51,7 @@ export async function getUsuarioActual(): Promise<UsuarioActual | null> {
 
   const { data: usuario, error } = await supabase
     .from("usuarios")
-    .select("id, email, nombre, rol, marca_id, sede_id, activo, modulos, area")
+    .select("id, email, nombre, rol, marca_id, sede_id, activo, modulos, area, roles(acceso_total)")
     .eq("id", user.id)
     .single();
 
@@ -53,18 +63,25 @@ export async function getUsuarioActual(): Promise<UsuarioActual | null> {
   // con un mensaje claro en vez de dejarlo rebotando en silencio.
   if (error || !usuario || !usuario.activo) return null;
 
-  return usuario as UsuarioActual;
+  const { roles, ...resto } = usuario as typeof usuario & {
+    roles: { acceso_total: boolean } | null;
+  };
+
+  return {
+    ...resto,
+    accesoTotal: roles?.acceso_total ?? false,
+  } as UsuarioActual;
 }
 
-export function esMaestro(usuario: Pick<UsuarioActual, "marca_id" | "rol">) {
-  return usuario.rol === "Admin" && usuario.marca_id === null;
+export function esMaestro(usuario: Pick<UsuarioActual, "marca_id" | "accesoTotal">) {
+  return usuario.accesoTotal && usuario.marca_id === null;
 }
 
 export function esAdminDeMarca(
-  usuario: Pick<UsuarioActual, "marca_id" | "sede_id" | "rol">
+  usuario: Pick<UsuarioActual, "marca_id" | "sede_id" | "accesoTotal">
 ) {
   return (
-    usuario.rol === "Admin" &&
+    usuario.accesoTotal &&
     usuario.marca_id !== null &&
     usuario.sede_id === null
   );
@@ -84,7 +101,7 @@ export function esAdminDeMarca(
  * guards al principio de insumos/subrecetas/familias/configuracion).
  */
 export function tieneModulo(
-  usuario: Pick<UsuarioActual, "marca_id" | "rol" | "modulos">,
+  usuario: Pick<UsuarioActual, "marca_id" | "rol" | "modulos" | "accesoTotal">,
   modulo: Modulo
 ) {
   if (esMaestro(usuario)) return true;
