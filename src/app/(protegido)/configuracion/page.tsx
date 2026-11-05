@@ -14,6 +14,7 @@ import { actualizarCentroCostoFamilia, actualizarFoodCostFamilia } from "@/app/(
 import RolesPermisos from "./RolesPermisos";
 import EstiloRecetario from "./EstiloRecetario";
 import MermasInsumo from "./MermasInsumo";
+import BotonRecalcularCostos from "./BotonRecalcularCostos";
 
 const inputClase =
   "rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-[#1E3A5F]";
@@ -293,20 +294,7 @@ export default async function ConfiguracionPage({
             el día a día (cada edición ya recalcula sola) — es una red de seguridad por si algo
             quedó desactualizado.
           </p>
-          <form action={recalcularCostosSede}>
-            <input type="hidden" name="sede_id" value={sedeActiva.id} />
-            <button
-              type="submit"
-              className="btn-secondary self-start"
-              onClick={(e) => {
-                if (!confirm("¿Recalcular el costo de todas las subrecetas y recetas de esta sede?")) {
-                  e.preventDefault();
-                }
-              }}
-            >
-              Recalcular todos los costos
-            </button>
-          </form>
+          <BotonRecalcularCostos sedeId={sedeActiva.id} accion={recalcularCostosSede} />
         </div>
 
         <div className="card flex flex-col gap-2 p-4" style={{ minWidth: 260 }}>
