@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { useFormState, useFormStatus } from "react-dom";
-import { crearSubrecetaCompleta, type EstadoSubreceta } from "./actions";
+import { crearSubrecetaCompleta, actualizarSubrecetaCompleta, type EstadoSubreceta } from "./actions";
 import { CampoNumero } from "@/components/CampoNumero";
 import InsumoAutocomplete, { type ItemOpt } from "@/components/InsumoAutocomplete";
 import type { InsumoSubSinVincular } from "@/lib/data/subrecetas";
@@ -13,6 +13,18 @@ type Linea = {
   unidad: string;
   cantidad: number;
   mermaPct: number; // porcentaje (0-100), como en la UI
+};
+
+/** Valores con los que arranca el formulario cuando se usa para EDITAR una
+ * subreceta existente (viene de SubrecetaDetallePage →
+ * /subrecetas/nueva?edit=ID), mismo patrón que Recetas
+ * (`/recetas/nueva?edit=ID`). */
+type ValoresIniciales = {
+  nombre: string;
+  rendimiento: number;
+  unidadRendimiento: string;
+  desvioPct: number;
+  lineas: Linea[];
 };
 
 function norm(s: string): string {
@@ -27,11 +39,12 @@ const money = (n: number) =>
   "$" + (n || 0).toLocaleString("es-CO", { maximumFractionDigits: 0 });
 const num = (n: number) => (n || 0).toLocaleString("es-CO", { maximumFractionDigits: 2 });
 
-function BotonGuardar() {
+function BotonGuardar({ esEdicion }: { esEdicion: boolean }) {
   const { pending } = useFormStatus();
+  const texto = esEdicion ? "Actualizar subreceta" : "Guardar subreceta";
   return (
     <button type="submit" disabled={pending} className="btn-primary w-full disabled:opacity-50">
-      {pending ? "Guardando…" : "Guardar receta"}
+      {pending ? "Guardando…" : texto}
     </button>
   );
 }
@@ -43,6 +56,8 @@ export default function SubrecetaForm({
   subfamilias,
   items,
   unidades,
+  subrecetaId,
+  valoresIniciales,
 }: {
   sedeId: string;
   insumosSubSinVincular: InsumoSubSinVincular[];
@@ -50,25 +65,33 @@ export default function SubrecetaForm({
   subfamilias: { id: string; nombre: string; familia_nombre: string }[];
   items: ItemOpt[];
   unidades: { codigo: string; nombre: string }[];
+  subrecetaId?: string;
+  valoresIniciales?: ValoresIniciales;
 }) {
-  const [estado, formAction] = useFormState<EstadoSubreceta, FormData>(crearSubrecetaCompleta, {
+  const esEdicion = Boolean(subrecetaId);
+  const accion = esEdicion ? actualizarSubrecetaCompleta : crearSubrecetaCompleta;
+  const [estado, formAction] = useFormState<EstadoSubreceta, FormData>(accion, {
     error: null,
   });
 
-  // Card 1 — Maestro en Insumos: o se enlaza uno "SUB." existente sin usar,
-  // o se completan los datos para crear uno nuevo (mutuamente excluyentes).
+  // Card "Maestro en Insumos" — solo aplica al crear: o se enlaza uno
+  // "SUB." existente, o se completan los datos para crear uno nuevo
+  // (mutuamente excluyentes). Una vez creada la subreceta, el maestro
+  // vinculado no se puede cambiar desde esta pantalla.
   const [busqueda, setBusqueda] = useState("");
   const [insumoVinculadoId, setInsumoVinculadoId] = useState("");
   const [referencia, setReferencia] = useState(referenciaSugerida);
   const [subfamiliaId, setSubfamiliaId] = useState("");
 
-  // Card 2 — Datos de la preparación
-  const [nombre, setNombre] = useState("");
-  const [rendimiento, setRendimiento] = useState(1);
-  const [unidadRendimiento, setUnidadRendimiento] = useState(unidades[0]?.codigo ?? "");
-  const [desvioPct, setDesvioPct] = useState(0);
+  // Datos de la preparación
+  const [nombre, setNombre] = useState(valoresIniciales?.nombre ?? "");
+  const [rendimiento, setRendimiento] = useState(valoresIniciales?.rendimiento ?? 1);
+  const [unidadRendimiento, setUnidadRendimiento] = useState(
+    valoresIniciales?.unidadRendimiento ?? unidades[0]?.codigo ?? ""
+  );
+  const [desvioPct, setDesvioPct] = useState(valoresIniciales?.desvioPct ?? 0);
 
-  const [lineas, setLineas] = useState<Linea[]>([]);
+  const [lineas, setLineas] = useState<Linea[]>(valoresIniciales?.lineas ?? []);
   const [errores, setErrores] = useState<string[]>([]);
   const cantRefs = useRef<Record<number, HTMLInputElement | null>>({});
 
@@ -137,9 +160,9 @@ export default function SubrecetaForm({
 
   function validar(): string[] {
     const e: string[] = [];
-    if (nombre.trim() === "") e.push("El nombre de la receta es obligatorio.");
+    if (nombre.trim() === "") e.push("El nombre de la subreceta es obligatorio.");
     if (!rendimiento || rendimiento <= 0) e.push("El rendimiento producido debe ser mayor a 0.");
-    if (!insumoVinculadoId && !referencia.trim())
+    if (!esEdicion && !insumoVinculadoId && !referencia.trim())
       e.push('Elegí un insumo "SUB." existente o escribí una referencia para el maestro nuevo.');
     if (lineas.length === 0) e.push("Agregá al menos un ingrediente.");
     lineas.forEach((l, idx) => {
@@ -172,137 +195,144 @@ export default function SubrecetaForm({
 
   return (
     <form action={formAction} onSubmit={alEnviar} className="flex flex-col gap-4">
+      {esEdicion && <input type="hidden" name="id" value={subrecetaId} />}
       <input type="hidden" name="sede_id" value={sedeId} />
       <input type="hidden" name="nombre" value={nombre} />
       <input type="hidden" name="rendimiento" value={rendimiento} />
       <input type="hidden" name="unidad_rendimiento_codigo" value={unidadRendimiento} />
       <input type="hidden" name="desvio_pct" value={desvioPct} />
-      <input type="hidden" name="modo" value={modo} />
-      <input type="hidden" name="insumo_vinculado_id" value={insumoVinculadoId} />
-      <input type="hidden" name="referencia" value={referencia} />
-      <input type="hidden" name="subfamilia_id" value={subfamiliaId} />
+      {!esEdicion && (
+        <>
+          <input type="hidden" name="modo" value={modo} />
+          <input type="hidden" name="insumo_vinculado_id" value={insumoVinculadoId} />
+          <input type="hidden" name="referencia" value={referencia} />
+          <input type="hidden" name="subfamilia_id" value={subfamiliaId} />
+        </>
+      )}
       <input type="hidden" name="ingredientes_json" value={ingredientesJson} />
 
-      <div className="card p-4">
-        <p
-          className="mb-3 flex items-center gap-2 border-b pb-2 text-[11px] font-bold uppercase tracking-widest text-slate-500"
-          style={{ borderColor: "var(--line)" }}
-        >
-          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#1E3A5F] text-[10px] font-bold text-white">
-            1
-          </span>
-          🔗 Maestro en Insumos
-        </p>
-        <p className="mb-3 text-xs text-slate-500">
-          Toda preparación vive en INSUMOS (es lo que las recetas usan). Enlazá un insumo &quot;SUB.&quot;
-          existente, o creá el maestro nuevo con su referencia y subfamilia.
-        </p>
-        <div className="grid gap-4 lg:grid-cols-2">
-          <div className="rounded-lg border border-slate-200 p-3">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Buscar en insumos — la preparación ya existe como &quot;SUB.&quot;
-            </p>
-            {insumoVinculado ? (
-              <div className="flex items-center justify-between rounded-md bg-[#EFF6FF] px-3 py-2 text-sm">
-                <span>
-                  {insumoVinculado.articulo}{" "}
-                  {insumoVinculado.referencia && (
-                    <span className="ml-1 rounded bg-white px-1.5 py-px font-mono text-[10px] text-slate-500">
-                      {insumoVinculado.referencia}
-                    </span>
-                  )}
-                </span>
-                <button
-                  type="button"
-                  onClick={quitarVinculo}
-                  className="text-slate-400 hover:text-red-600"
-                  title="Quitar enlace"
-                >
-                  ✕
-                </button>
-              </div>
-            ) : (
-              <>
-                <input
-                  value={busqueda}
-                  onChange={(e) => setBusqueda(e.target.value)}
-                  placeholder="Buscar por nombre o referencia… (ej: fondo, SUB-ARROZ)"
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#1E3A5F]"
-                />
-                {busqueda ? (
-                  <div className="mt-2 max-h-40 overflow-y-auto rounded-md border border-slate-100">
-                    {resultadosBusqueda.length === 0 ? (
-                      <p className="px-3 py-3 text-center text-xs text-slate-400">
-                        No hay preparaciones &quot;SUB.&quot; sin enlazar que coincidan.
-                      </p>
-                    ) : (
-                      resultadosBusqueda.map((i) => (
-                        <button
-                          type="button"
-                          key={i.id}
-                          onClick={() => elegirVinculo(i.id)}
-                          className="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50"
-                        >
-                          {i.articulo}{" "}
-                          {i.referencia && (
-                            <span className="ml-1 rounded bg-slate-100 px-1.5 py-px font-mono text-[10px] text-slate-500">
-                              {i.referencia}
-                            </span>
-                          )}
-                        </button>
-                      ))
+      {!esEdicion && (
+        <div className="card p-4">
+          <p
+            className="mb-3 flex items-center gap-2 border-b pb-2 text-[11px] font-bold uppercase tracking-widest text-slate-500"
+            style={{ borderColor: "var(--line)" }}
+          >
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#1E3A5F] text-[10px] font-bold text-white">
+              1
+            </span>
+            🔗 Maestro en Insumos
+          </p>
+          <p className="mb-3 text-xs text-slate-500">
+            Toda preparación vive en INSUMOS (es lo que las recetas usan). Enlazá un insumo &quot;SUB.&quot;
+            existente, o creá el maestro nuevo con su referencia y subfamilia.
+          </p>
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div className="rounded-lg border border-slate-200 p-3">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Buscar en insumos — la preparación ya existe como &quot;SUB.&quot;
+              </p>
+              {insumoVinculado ? (
+                <div className="flex items-center justify-between rounded-md bg-[#EFF6FF] px-3 py-2 text-sm">
+                  <span>
+                    {insumoVinculado.articulo}{" "}
+                    {insumoVinculado.referencia && (
+                      <span className="ml-1 rounded bg-white px-1.5 py-px font-mono text-[10px] text-slate-500">
+                        {insumoVinculado.referencia}
+                      </span>
                     )}
-                  </div>
-                ) : (
-                  <p className="mt-2 text-xs text-slate-400">
-                    {insumosSubSinVincular.length === 0
-                      ? 'No hay preparaciones "SUB." sin enlazar todavía.'
-                      : "Escribí para buscar entre las preparaciones sin enlazar."}
-                  </p>
-                )}
-              </>
-            )}
-          </div>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={quitarVinculo}
+                    className="text-slate-400 hover:text-red-600"
+                    title="Quitar enlace"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <input
+                    value={busqueda}
+                    onChange={(e) => setBusqueda(e.target.value)}
+                    placeholder="Buscar por nombre o referencia… (ej: fondo, SUB-ARROZ)"
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#1E3A5F]"
+                  />
+                  {busqueda ? (
+                    <div className="mt-2 max-h-40 overflow-y-auto rounded-md border border-slate-100">
+                      {resultadosBusqueda.length === 0 ? (
+                        <p className="px-3 py-3 text-center text-xs text-slate-400">
+                          No hay preparaciones &quot;SUB.&quot; sin enlazar que coincidan.
+                        </p>
+                      ) : (
+                        resultadosBusqueda.map((i) => (
+                          <button
+                            type="button"
+                            key={i.id}
+                            onClick={() => elegirVinculo(i.id)}
+                            className="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50"
+                          >
+                            {i.articulo}{" "}
+                            {i.referencia && (
+                              <span className="ml-1 rounded bg-slate-100 px-1.5 py-px font-mono text-[10px] text-slate-500">
+                                {i.referencia}
+                              </span>
+                            )}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-xs text-slate-400">
+                      {insumosSubSinVincular.length === 0
+                        ? 'No hay preparaciones "SUB." sin enlazar todavía.'
+                        : "Escribí para buscar entre las preparaciones sin enlazar."}
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
 
-          <div className="rounded-lg border border-amber-200 bg-amber-50/60 p-3">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-amber-700">
-              + Crear maestro nuevo — la preparación NO existe aún en Insumos
-            </p>
-            <label className="mb-2 block">
-              <span className="text-xs font-medium text-slate-600">Referencia del maestro (código único)</span>
-              <input
-                value={referencia}
-                onChange={(e) => setReferencia(e.target.value)}
-                disabled={!!insumoVinculadoId}
-                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#1E3A5F] disabled:bg-slate-100 disabled:text-slate-400"
-              />
-              <span className="mt-1 block text-[11px] text-emerald-700">
-                ✓ Siguiente disponible: {referenciaSugerida} (editable)
-              </span>
-            </label>
-            <label className="block">
-              <span className="text-xs font-medium text-slate-600">Subfamilia del maestro</span>
-              <select
-                value={subfamiliaId}
-                onChange={(e) => setSubfamiliaId(e.target.value)}
-                disabled={!!insumoVinculadoId}
-                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#1E3A5F] disabled:bg-slate-100 disabled:text-slate-400"
-              >
-                <option value="">Elegí la subfamilia…</option>
-                {subfamilias.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.familia_nombre ? `${s.familia_nombre} · ${s.nombre}` : s.nombre}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <p className="mt-2 text-[11px] text-slate-500">
-              Al guardar, el insumo nace en Insumos con el NOMBRE tal cual lo escribís abajo (usá el prefijo
-              SUB. si querés que se agrupe como preparación), esta referencia y el costo calculado.
-            </p>
+            <div className="rounded-lg border border-amber-200 bg-amber-50/60 p-3">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-amber-700">
+                + Crear maestro nuevo — la preparación NO existe aún en Insumos
+              </p>
+              <label className="mb-2 block">
+                <span className="text-xs font-medium text-slate-600">Referencia del maestro (código único)</span>
+                <input
+                  value={referencia}
+                  onChange={(e) => setReferencia(e.target.value)}
+                  disabled={!!insumoVinculadoId}
+                  className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#1E3A5F] disabled:bg-slate-100 disabled:text-slate-400"
+                />
+                <span className="mt-1 block text-[11px] text-emerald-700">
+                  ✓ Siguiente disponible: {referenciaSugerida} (editable)
+                </span>
+              </label>
+              <label className="block">
+                <span className="text-xs font-medium text-slate-600">Subfamilia del maestro</span>
+                <select
+                  value={subfamiliaId}
+                  onChange={(e) => setSubfamiliaId(e.target.value)}
+                  disabled={!!insumoVinculadoId}
+                  className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#1E3A5F] disabled:bg-slate-100 disabled:text-slate-400"
+                >
+                  <option value="">Elegí la subfamilia…</option>
+                  {subfamilias.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.familia_nombre ? `${s.familia_nombre} · ${s.nombre}` : s.nombre}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <p className="mt-2 text-[11px] text-slate-500">
+                Al guardar, el insumo nace en Insumos con el NOMBRE tal cual lo escribís abajo (usá el prefijo
+                SUB. si querés que se agrupe como preparación), esta referencia y el costo calculado.
+              </p>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       <div className="card p-4">
         <p
@@ -310,17 +340,17 @@ export default function SubrecetaForm({
           style={{ borderColor: "var(--line)" }}
         >
           <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#1E3A5F] text-[10px] font-bold text-white">
-            2
+            {esEdicion ? 1 : 2}
           </span>
           📋 Datos de la preparación
         </p>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <label className="block sm:col-span-2">
-            <span className="text-xs font-medium uppercase tracking-wide text-slate-500">Nombre de la receta</span>
+            <span className="text-xs font-medium uppercase tracking-wide text-slate-500">Nombre de la subreceta</span>
             <input
               value={nombre}
               onChange={(e) => setNombre(e.target.value)}
-              placeholder="Ej: Ceviche clásico"
+              placeholder="Ej: Fondo de pollo"
               className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#1E3A5F]"
             />
           </label>
@@ -500,7 +530,7 @@ export default function SubrecetaForm({
             </p>
           )}
 
-          <BotonGuardar />
+          <BotonGuardar esEdicion={esEdicion} />
         </aside>
       </div>
     </form>
