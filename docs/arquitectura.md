@@ -1300,3 +1300,90 @@ ver nota técnica arriba).
 
 No se modificó ni se tocó el GastroCore viejo (`gastro-core.vercel.app`)
 en ningún momento.
+
+## Igualar el formato de Subrecetas con el de Recetas (05/11)
+
+Mariluz pidió modificar la estructura de las Subrecetas para que
+"iguale el formato de Recetas" — hasta ahora Subrecetas tenía una
+pantalla más simple, sin ficha técnica, sin historial de versiones y con
+un formulario de edición distinto al de creación. Antes de tocar nada se
+le preguntó explícitamente, una por una, qué partes del formato de
+Recetas debían copiarse también a Subrecetas, porque algunas de esas
+partes no son solo un cambio de forma sino una decisión de negocio:
+
+- **Clasificación por familia/subfamilia en Subrecetas:** Mariluz
+  contestó **"No, no aplica."** No se agregó.
+- **Precio de venta, food cost objetivo y semáforo en Subrecetas:**
+  Mariluz contestó **"No, queda solo en Recetas."** Tiene sentido: una
+  subreceta es una preparación interna (un fondo, una salsa base), no
+  algo que se vende directamente, así que no tiene precio de venta.
+- **Ficha técnica (tiempo de preparación, gramaje por porción,
+  preparación, emplatado, notas):** Mariluz contestó **"Sí, agregarla."**
+- **Historial de versiones (una foto de cada cambio, con quién lo hizo y
+  cuándo):** Mariluz contestó **"Sí, agregarlo."**
+
+Con esas cuatro respuestas confirmadas se armó un plan concreto y se le
+pidió el visto bueno final antes de programar — contestó **"Sí, avanzá
+así."**
+
+**Lo que cambió, en las tres capas:**
+
+- **Base de datos:** dos tablas nuevas, con el mismo aislamiento por sede
+  que todas las demás (RLS con la política `sede_aislamiento`, igual que
+  el resto del sistema): `fichas_tecnicas_subreceta` (mismo patrón que
+  `fichas_tecnicas` de Recetas, pero sin `foto_url` — la foto de la
+  subreceta sigue viviendo donde ya vivía) y `historial_subrecetas`
+  (mismo patrón que `historial_recetas`: guarda una "foto" completa de la
+  subreceta, sus ingredientes y su ficha en cada creación o edición, con
+  un número de versión que sube de a uno).
+- **Formulario:** antes, crear una subreceta y editarla eran dos
+  pantallas distintas, con la de edición más limitada. Ahora es una sola
+  pantalla reutilizada para ambas cosas (`/subrecetas/nueva`, y
+  `/subrecetas/nueva?edit=ID` para editar), exactamente igual que ya
+  funciona en Recetas. Al editar, el formulario reemplaza toda la lista
+  de ingredientes de una vez (se borran y se vuelven a crear, mismo
+  patrón que Recetas) y nunca muestra ni deja tocar el insumo "maestro"
+  vinculado — eso se define una sola vez, al crear la subreceta, y no se
+  puede cambiar después (es la pieza que conecta cada subreceta con su
+  fila espejo en Insumos para que las recetas puedan usarla como
+  ingrediente).
+- **PDF:** se rediseñó para que se vea igual que el PDF de Recetas —
+  mismo encabezado con el nombre y la sede, mismas tarjetas de
+  indicadores arriba, misma tabla de ingredientes (con las columnas
+  "Tipo" y "Cantidad real" que ya tiene Recetas) y el mismo pie de página
+  con numeración. A diferencia del PDF de Recetas, no muestra precio de
+  venta ni food cost, porque — como se definió arriba — una subreceta no
+  tiene esos datos.
+- **Pantalla de detalle:** ahora es de solo lectura para los ingredientes
+  (se editan todos juntos desde "✎ Editar subreceta", no uno por uno como
+  antes) y agrega dos secciones nuevas: "Ficha técnica" (un formulario
+  para cargar tiempo de preparación, gramaje por porción, preparación,
+  emplatado y notas) e "Historial de versiones" (una lista desplegable
+  con cada versión guardada, quién la hizo y cuándo).
+
+**Nota sobre una pantalla de "subreceta inactiva" que ya no aparece:**
+la pantalla de detalle de Subrecetas antes no tenía ningún botón para
+marcar una subreceta como inactiva, y la nueva tampoco lo tiene — no es
+un cambio, es que Recetas tampoco tiene ese botón en ningún lado de su
+pantalla, así que Subrecetas queda exactamente igual que su referencia
+en este punto.
+
+**Verificación antes de subir:** se corrió la compilación completa de
+TypeScript sobre todo el código nuevo (dos veces, sin errores) antes de
+tocar GitHub, y después de subir cada archivo se comparó su contenido
+byte por byte contra lo que quedó en GitHub.
+
+Archivos tocados: `src/lib/data/fichas-subrecetas.ts` (nuevo),
+`src/lib/data/historial-subrecetas.ts` (nuevo),
+`src/lib/data/subrecetas.ts`,
+`src/app/(protegido)/subrecetas/actions.ts`,
+`src/app/(protegido)/subrecetas/SubrecetaForm.tsx`,
+`src/app/(protegido)/subrecetas/nueva/page.tsx`,
+`src/app/(protegido)/subrecetas/[id]/page.tsx`,
+`src/lib/pdf/subreceta.ts`, y se borró
+`src/components/FilaAgregarIngrediente.tsx` (ya no se usaba en ningún
+lado). En la base de datos, las tablas nuevas `fichas_tecnicas_subreceta`
+y `historial_subrecetas`.
+
+No se modificó ni se tocó el GastroCore viejo (`gastro-core.vercel.app`)
+en ningún momento.
