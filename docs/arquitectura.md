@@ -1387,3 +1387,41 @@ y `historial_subrecetas`.
 
 No se modificó ni se tocó el GastroCore viejo (`gastro-core.vercel.app`)
 en ningún momento.
+
+## Arreglo: error al entrar a Configuración (05/11)
+
+Mariluz avisó que al entrar a la pantalla de Configuración aparecía
+"Application error: a server-side exception has occurred", con un
+código (digest) que coincidió exactamente con un error real registrado
+en los logs de Vercel.
+
+**Qué lo causaba:** el botón "Recalcular todos los costos" vivía
+directamente en `page.tsx`, y esa pantalla es una de las que Next.js
+arma del lado del servidor. Ese botón tenía una confirmación
+("¿Recalcular...?") programada para disparar justo antes de enviar el
+formulario — y ese tipo de comportamiento interactivo no se puede
+definir dentro de una pantalla armada del lado del servidor: rompía
+toda la pantalla apenas alguien entraba.
+
+**El arreglo:** se sacó ese botón a su propio archivo chico,
+`BotonRecalcularCostos.tsx`, que sí puede manejar esa interacción
+porque está marcado explícitamente para correr del lado del navegador
+de quien lo usa. `page.tsx` ahora solo lo llama y le pasa la sede y la
+acción a ejecutar — el comportamiento para quien usa la pantalla es
+exactamente el mismo (mismo botón, mismo mensaje de confirmación), solo
+cambió cómo está armado por dentro.
+
+Se revisó el resto del código para confirmar que no había otro botón
+armado de la misma forma riesgosa en ninguna otra pantalla.
+
+**Verificación antes de subir:** se corrió la compilación completa de
+TypeScript sin errores, y después de subir se comparó el archivo byte
+por byte contra lo que quedó en GitHub, se confirmó que el despliegue
+en Vercel llegó a estado listo (`READY`), y se confirmó en los logs de
+Vercel que no volvió a aparecer el error desde el arreglo.
+
+Archivos tocados: `src/app/(protegido)/configuracion/BotonRecalcularCostos.tsx`
+(nuevo), `src/app/(protegido)/configuracion/page.tsx`.
+
+No se modificó ni se tocó el GastroCore viejo (`gastro-core.vercel.app`)
+en ningún momento.
