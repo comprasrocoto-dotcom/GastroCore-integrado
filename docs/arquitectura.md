@@ -1524,3 +1524,53 @@ Archivos tocados: `src/components/IconosNav.tsx` (nuevo),
 `src/components/HeaderProtegido.tsx`,
 `src/app/(protegido)/layout.tsx`,
 `src/app/(protegido)/recetario/RecetarioExplorador.tsx`.
+
+
+## Recetario con colores y detalle más grande, y eliminar insumos (06/11)
+
+Mariluz pidió tres cosas en el mismo mensaje, con una foto de la pantalla
+de detalle de una subreceta:
+
+1. Que las tarjetas del Recetario tengan color, "que se vean llamativas
+   no tan planas".
+2. Que al abrir una receta o subreceta (el detalle que se abre al hacer
+   click en una tarjeta) la ventana se vea más grande.
+3. Poder eliminar insumos de verdad, no solo desactivarlos.
+
+**Tarjetas de colores:** cada tarjeta del Recetario ahora tiene una
+franja de color arriba, una placa de color de fondo cuando no tiene
+foto, y una etiqueta de color con el nombre de la familia (o "Sub.
+receta" para las subrecetas). El color que usa cada tarjeta es el mismo
+que ya tiene su pestaña arriba — no es un color por marca todavía, sigue
+siendo el mismo esquema de 6 estilos (Rocoto / Malanga / Pacífico / Ají
+Amarillo / Carbón / Vino) que ya se elige por sede en Configuración, así
+que apenas lleguen los colores reales de marca, estas tarjetas los van a
+heredar automáticamente sin tocar nada más.
+
+**Detalle más grande:** la ventana de detalle (la misma para recetas y
+subrecetas) pasó de un ancho chico a uno más grande, con más alto
+disponible, la foto más grande arriba, y la misma franja de color de la
+tarjeta repetida arriba del todo del detalle.
+
+**Eliminar insumos de verdad:** se agregó un botón "Eliminar" en la
+lista de Insumos, con el mismo patrón que ya se usa para Marcas y Sedes
+(20/10): pide confirmación antes de borrar, y solo funciona si el
+insumo no está siendo usado como ingrediente en ninguna receta o
+subreceta, ni es el insumo maestro de ninguna subreceta — si lo está,
+muestra un mensaje explicando por qué no se pudo borrar y sugiere usar
+"Activo" (que siempre se puede deshacer) en vez de "Eliminar". El
+historial de precios de ese insumo se borra junto con él (son solo
+números viejos de ese insumo, no se comparten con nada más). Es
+importante que quede claro: a diferencia de "Activo", esto no tiene
+vuelta atrás.
+
+Pendiente, todavía no se tocó: los colores siguen siendo los 6 estilos
+genéricos — cuando Mariluz mande la paleta real de cada marca
+(Rocoto, Malanga, Sinpar, 123 Wok, Casa de Nadie, y las que falten), se
+reemplazan los colores provisionales por los reales en
+`src/lib/temas-recetario.ts`.
+
+Archivos tocados: `src/app/(protegido)/recetario/RecetarioExplorador.tsx`,
+`src/app/(protegido)/insumos/BotonEliminarInsumo.tsx` (nuevo),
+`src/app/(protegido)/insumos/actions.ts`,
+`src/app/(protegido)/insumos/page.tsx`.
