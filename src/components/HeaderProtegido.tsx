@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import type { SedeConMarca } from "@/lib/data/sedes";
 import SelectorSede from "@/components/SelectorSede";
 import TemaToggle from "@/components/TemaToggle";
+import LogoGastroCentral from "@/components/LogoGastroCentral";
 import { logout } from "@/app/login/actions";
 
 /**
@@ -85,9 +86,7 @@ export default function HeaderProtegido({
     <header className="sticky top-0 z-40 border-b border-black/5 bg-white/90 backdrop-blur">
       <nav className="app-shell flex items-center gap-1 py-2 overflow-x-auto">
         <Link href="/" className="mr-2 flex items-center gap-2 font-display text-lg font-bold text-[#1E3A5F]">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#1E3A5F] text-sm font-bold text-white">
-            GC
-          </span>
+          <LogoGastroCentral className="h-8 w-8 shrink-0" />
           Gastro Central
         </Link>
         <div className="mx-2 h-6 w-px bg-black/10" />
