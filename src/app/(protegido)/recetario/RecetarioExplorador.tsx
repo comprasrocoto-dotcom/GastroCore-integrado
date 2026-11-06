@@ -41,6 +41,23 @@ export default function RecetarioExplorador({
 
   const totalSubrecetas = items.filter((i) => i.tipo === "subreceta").length;
 
+  // Color por tarjeta (06/11, a pedido de Mariluz: "que se vean llamativas
+  // no tan planas"). Cada familia usa el mismo color que ya tiene su
+  // pestaña arriba (colorCategoria, por índice en `categorias`); las
+  // subrecetas usan el acento del tema. No es un color por marca todavía
+  // (eso depende de la paleta real que Mariluz va a mandar) — por ahora es
+  // el mismo tema de color que ya elige cada sede en Configuración.
+  const familiaColorMap = useMemo(() => {
+    const mapa = new Map<string, string>();
+    categorias.forEach(([nombre], indice) => mapa.set(nombre, colorCategoria(tema, indice)));
+    return mapa;
+  }, [categorias, tema]);
+
+  function colorDeItem(esSubreceta: boolean, familiaNombre?: string | null): string {
+    if (esSubreceta) return tema.acento;
+    return familiaColorMap.get(familiaNombre ?? "Sin categoría") ?? tema.acento;
+  }
+
   const filtrados = useMemo(() => {
     let lista = items;
     if (seccion === "subrecetas") {
@@ -136,32 +153,43 @@ export default function RecetarioExplorador({
         />
 
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-          {filtrados.map((item) => (
-            <button
-              key={`${item.tipo}-${item.id}`}
-              onClick={() => abrirDetalle(item)}
-              className="card card-hover flex flex-col items-start gap-1 overflow-hidden p-0 text-left"
-            >
-              {item.foto_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={item.foto_url} alt="" className="h-28 w-full object-cover" />
-              ) : (
-                <div className="flex h-28 w-full items-center justify-center bg-slate-100 text-3xl">
-                  🍽️
+          {filtrados.map((item) => {
+            const color = colorDeItem(item.tipo === "subreceta", item.familia_nombre);
+            return (
+              <button
+                key={`${item.tipo}-${item.id}`}
+                onClick={() => abrirDetalle(item)}
+                className="card card-hover flex flex-col items-start gap-0 overflow-hidden p-0 text-left"
+              >
+                <div className="h-1.5 w-full shrink-0" style={{ background: color }} />
+                {item.foto_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={item.foto_url} alt="" className="h-28 w-full object-cover" />
+                ) : (
+                  <div
+                    className="flex h-28 w-full items-center justify-center text-3xl"
+                    style={{ background: `linear-gradient(135deg, ${color}2e, ${color}10)` }}
+                  >
+                    {item.tipo === "subreceta" ? "🧪" : "🍽️"}
+                  </div>
+                )}
+                <div className="flex flex-col gap-1.5 p-3">
+                  <p
+                    className="inline-flex w-fit items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+                    style={{ background: `${color}1f`, color }}
+                  >
+                    <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: color }} />
+                    {item.tipo === "subreceta" ? "Sub. receta" : item.familia_nombre ?? "Sin categoría"}
+                  </p>
+                  <p className="text-sm font-semibold leading-snug">{item.nombre}</p>
+                  <p className="text-xs text-slate-400">
+                    {item.ingredientes_count} ingrediente{item.ingredientes_count === 1 ? "" : "s"}
+                    {cargando === item.id ? " · abriendo..." : ""}
+                  </p>
                 </div>
-              )}
-              <div className="flex flex-col gap-1 p-3">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-                  {item.tipo === "subreceta" ? "Sub. receta" : item.familia_nombre ?? "Sin categoría"}
-                </p>
-                <p className="text-sm font-semibold leading-snug">{item.nombre}</p>
-                <p className="text-xs text-slate-400">
-                  {item.ingredientes_count} ingrediente{item.ingredientes_count === 1 ? "" : "s"}
-                  {cargando === item.id ? " · abriendo..." : ""}
-                </p>
-              </div>
-            </button>
-          ))}
+              </button>
+            );
+          })}
           {filtrados.length === 0 && (
             <p className="col-span-full py-8 text-center text-slate-400">
               No se encontraron recetas.
@@ -176,13 +204,17 @@ export default function RecetarioExplorador({
           onClick={() => setDetalle(null)}
         >
           <div
-            className="card max-h-[85vh] w-full max-w-lg overflow-y-auto p-0"
+            className="card max-h-[90vh] w-full max-w-2xl overflow-y-auto p-0"
             onClick={(e) => e.stopPropagation()}
           >
+            <div
+              className="h-1.5 w-full shrink-0"
+              style={{ background: colorDeItem(detalle.tipo === "subreceta", detalle.familia_nombre) }}
+            />
             {detalle.foto_url && (
-              <div className="relative h-48 w-full bg-slate-100">
+              <div className="relative h-64 w-full bg-slate-100">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={detalle.foto_url} alt="" className="h-48 w-full object-contain" />
+                <img src={detalle.foto_url} alt="" className="h-64 w-full object-contain" />
                 <button
                   type="button"
                   onClick={() => setFotoAmpliada(detalle.foto_url)}
