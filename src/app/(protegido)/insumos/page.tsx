@@ -48,8 +48,8 @@ export default async function InsumosPage({
           <h1 className="text-xl font-semibold">Insumos</h1>
           <p className="mt-1 text-sm" style={{ color: "var(--muted)" }}>{total} insumos</p>
           <p className="mt-1 text-xs" style={{ color: "var(--muted)" }}>
-            "Eliminar" borra el insumo de verdad y no se puede deshacer — solo funciona si no
-            está usado en ninguna receta ni subreceta. Si lo está, desactivalo (campo "Activo",
+            &quot;Eliminar&quot; borra el insumo de verdad y no se puede deshacer — solo funciona si no
+            está usado en ninguna receta ni subreceta. Si lo está, desactivalo (campo &quot;Activo&quot;,
             al editarlo) en vez de eliminarlo.
           </p>
         </div>
