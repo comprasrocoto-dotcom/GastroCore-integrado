@@ -26,7 +26,7 @@ export default async function LayoutProtegido({
   const sedePorDefecto = resolverSedeActiva(usuario, sedesVisibles, undefined);
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen md:pl-[72px]">
       <HeaderProtegido
         usuarioNombre={usuario.nombre}
         usuarioRol={usuario.rol}
