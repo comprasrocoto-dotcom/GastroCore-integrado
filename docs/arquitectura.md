@@ -1608,3 +1608,77 @@ ese mismo estilo (mismo lugar en la lista), ahora con su color real en
 vez del inventado.
 
 Archivo tocado: `src/lib/temas-recetario.ts`.
+
+## Carga masiva de costos desde un archivo Excel, por sede (06/11)
+
+Mariluz pidió poder actualizar el costo de muchos insumos a la vez
+subiendo un archivo plano (Excel), eligiendo primero la marca/sede a la
+que aplica (ej. "si voy a subir la base de datos de Arrebatao, poder
+elegir esa marca"), y que las recetas que usan esos insumos se
+actualicen de costo de inmediato, sin tener que entrar insumo por
+insumo a mano.
+
+**Lo que se investigó antes de programar:** se revisó un archivo real de
+costos (`Base_de_Costos.xlsx`, de Rocoto) para entender su formato
+exacto. Apareció un problema de codificación: el archivo trae nombres
+con letras especiales (Ñ, tildes) corrompidos (ej. "JALAPEÃ‘O" en vez de
+"JALAPEÑO") porque se guardó originalmente en una codificación de texto
+distinta a la que usa la web. Se armó y probó una función que reconoce y
+corrige ese tipo de corrupción automáticamente al leer el archivo, para
+que los nombres se vean bien sin que Mariluz tenga que corregirlos a
+mano. También se comparó el archivo completo contra los insumos ya
+cargados en la base, para medir qué porcentaje de artículos cruza bien
+por nombre y detectar casos raros (duplicados, variantes de nombre
+parecidas) antes de decidir cómo tratarlos.
+
+**Reglas de negocio confirmadas por Mariluz antes de programar (no se
+inventó ninguna):**
+
+- El cruce es por nombre de artículo, no por código: casi ningún insumo
+  tiene todavía un código de referencia cargado. El código que trae el
+  archivo sí se guarda como referencia en los insumos que se crean
+  nuevos, para ir completando ese dato de acá en adelante.
+- Un artículo del archivo que no existe todavía en esa sede (ni uno muy
+  parecido) se crea como insumo nuevo, con el costo, la unidad y la
+  subfamilia que traiga el archivo.
+- Las filas de subrecetas (código que arranca con "SUB") nunca se tocan
+  con esta carga: el costo de una subreceta se calcula solo, a partir de
+  sus propios ingredientes, no es un valor que se pueda pisar desde un
+  archivo.
+- Un nombre que coincide con más de un insumo ya existente (un duplicado
+  en la base) no se toca automáticamente — queda sin cambios para que se
+  resuelva a mano, en vez de adivinar cuál de los dos es el correcto.
+
+**Cómo quedó:** pantalla nueva, "Cargar costos desde archivo"
+(`/insumos/importar`, con un botón para llegar desde Insumos), siempre
+dentro de la marca/sede que ya está elegida en el selector de arriba —
+así, para cargar los costos de Arrebatao (por ejemplo), primero hay que
+pararse en esa sede y recién ahí subir el archivo. El proceso tiene dos
+pasos: primero se sube el archivo y se muestra una vista previa (cuántos
+insumos van a actualizar su costo, cuántos se van a crear como nuevos,
+cuántos ya tienen el mismo costo y no cambian, y el detalle línea por
+línea), y recién al confirmar esa vista previa se aplican los cambios de
+verdad. Al confirmar, además de actualizar los costos: queda registrado
+en el historial de precios de cada insumo (igual que un cambio manual),
+y se recalculan automáticamente **todas** las subrecetas y recetas de
+esa sede — primero las subrecetas, después las recetas, en el mismo
+orden que ya usa el botón "Poner costos al día" de Configuración — para
+que el food cost y el precio sugerido de cada receta reflejen los costos
+nuevos de inmediato, tal como pidió Mariluz.
+
+**Nota técnica para quien revise el código más adelante:** el costo de
+un ingrediente dentro de una receta queda "congelado" en el momento en
+que se agrega esa línea — no se actualiza solo cuando cambia el costo
+del insumo. Por eso hace falta el paso explícito de recalcular
+subrecetas y recetas después de la carga; sin ese paso, el costo nuevo
+quedaría guardado en el insumo pero las recetas seguirían mostrando el
+costo viejo hasta la próxima vez que alguien las tocara a mano.
+
+No se modificó ni se tocó el GastroCore viejo (`gastro-core.vercel.app`)
+en ningún momento.
+
+Archivos nuevos: `src/lib/excel/costos.ts` (lee el Excel y corrige la
+codificación), `src/lib/data/importar-costos.ts` (cruza contra la base y
+aplica los cambios), `src/app/(protegido)/insumos/importar/actions.ts`,
+`page.tsx` y `ImportarCostosForm.tsx`. Archivo tocado:
+`src/app/(protegido)/insumos/page.tsx` (el nuevo botón).
