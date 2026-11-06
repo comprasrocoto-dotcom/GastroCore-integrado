@@ -16,6 +16,11 @@ export type EstadoImportacion = {
   plan: PlanImportacion | null;
 };
 
+/**
+ * Paso 1: lee el archivo subido y arma el plan (qué se actualiza, qué se
+ * crea, qué queda igual) SIN tocar la base de datos todavía — hace falta
+ * confirmar en pantalla antes de aplicar nada de verdad.
+ */
 export async function previsualizarImportacion(
   _estadoPrevio: EstadoImportacion,
   formData: FormData
@@ -23,7 +28,9 @@ export async function previsualizarImportacion(
   const sedeId = String(formData.get("sede_id") ?? "");
   const archivo = formData.get("archivo");
 
-  if (!sedeId) return { error: "Falta la sede.", plan: null };
+  if (!sedeId) {
+    return { error: "Falta la sede.", plan: null };
+  }
   if (!(archivo instanceof File) || archivo.size === 0) {
     return { error: "Elegí un archivo para subir.", plan: null };
   }
@@ -33,19 +40,28 @@ export async function previsualizarImportacion(
     const buffer = await archivo.arrayBuffer();
     filas = await leerFilasArchivoCosto(buffer);
   } catch {
-    return { error: "No se pudo leer el archivo. ¿Es un Excel (.xlsx) válido?", plan: null };
+    return {
+      error: "No se pudo leer el archivo. ¿Es un Excel (.xlsx) válido?",
+      plan: null,
+    };
   }
 
-  if (filas.length === 0) return { error: "El archivo no tiene filas con artículo.", plan: null };
+  if (filas.length === 0) {
+    return { error: "El archivo no tiene filas con artículo.", plan: null };
+  }
 
   const plan = await armarPlanImportacion(sedeId, filas);
   return { error: null, plan };
 }
 
+/**
+ * Paso 2: aplica de verdad el plan que ya se mostró en pantalla — llega
+ * como JSON en un campo oculto del formulario de confirmación, no se
+ * vuelve a leer el archivo ni a recalcular el cruce.
+ */
 export async function aplicarImportacion(formData: FormData) {
   const sedeId = String(formData.get("sede_id") ?? "");
   const itemsCrudo = String(formData.get("items_json") ?? "");
-
   if (!sedeId || !itemsCrudo) {
     redirect(`/insumos/importar?sede=${sedeId}&error=${encodeURIComponent("Faltan datos para aplicar la carga.")}`);
   }
@@ -54,7 +70,8 @@ export async function aplicarImportacion(formData: FormData) {
   try {
     const parseado = JSON.parse(itemsCrudo) as ItemPlanImportacion[];
     items = parseado.filter(
-      (item) => (item.accion === "actualizar" && !!item.insumoId) || item.accion === "crear"
+      (item) =>
+        (item.accion === "actualizar" && !!item.insumoId) || item.accion === "crear"
     );
   } catch {
     redirect(`/insumos/importar?sede=${sedeId}&error=${encodeURIComponent("No se pudo leer el plan a aplicar.")}`);
