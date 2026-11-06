@@ -1574,3 +1574,37 @@ Archivos tocados: `src/app/(protegido)/recetario/RecetarioExplorador.tsx`,
 `src/app/(protegido)/insumos/BotonEliminarInsumo.tsx` (nuevo),
 `src/app/(protegido)/insumos/actions.ts`,
 `src/app/(protegido)/insumos/page.tsx`.
+
+
+## Paleta de colores real en el Recetario (06/11)
+
+Mariluz mandó la paleta real de 6 colores pastel que faltaba (quedaba
+pendiente desde la etapa anterior) y pidió: "poné la paleta en la web, y
+yo la elijo según necesidad" — es decir, no es un color fijo por marca,
+sigue siendo ella la que elige el estilo por sede en Configuración, como
+ya funcionaba, pero ahora con los colores reales en vez de los
+inventados.
+
+Los 6 estilos que ya existían (antes con nombres de sabores — "Rocoto
+clásico", "Malanga tropical", etc. — y colores inventados) ahora usan
+los 6 colores reales: Verde salvia (#B2D6C0), Verde azulado (#8EBDB8),
+Azul grisáceo (#929EB7), Rosa (#F5C9CF), Durazno (#FADBD2) y Crema
+(#FFF5E0). Cada estilo usa uno de esos colores como color principal
+(banner y botones), y los 6 estilos comparten la paleta completa para
+pintar las categorías/familias del Recetario — así, elija el estilo que
+elija cada sede, las tarjetas de distintas familias siempre se
+distinguen con los 6 colores reales.
+
+Esto completa lo que quedaba pendiente desde el cambio del 06/11 de las
+tarjetas de colores: ya no quedan colores provisionales en
+`src/lib/temas-recetario.ts` — las tarjetas del Recetario, el detalle de
+receta/subreceta y el selector de "Estilo del recetario" en
+Configuración ahora muestran los colores reales automáticamente, sin
+haber tenido que tocar ninguna otra pantalla.
+
+No cambia ninguna fórmula ni ningún dato — solo el color con el que se
+ve cada sede. Si una sede ya tenía un estilo elegido, sigue viéndose con
+ese mismo estilo (mismo lugar en la lista), ahora con su color real en
+vez del inventado.
+
+Archivo tocado: `src/lib/temas-recetario.ts`.
