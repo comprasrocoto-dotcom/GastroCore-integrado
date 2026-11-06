@@ -1425,3 +1425,31 @@ Archivos tocados: `src/app/(protegido)/configuracion/BotonRecalcularCostos.tsx`
 
 No se modificó ni se tocó el GastroCore viejo (`gastro-core.vercel.app`)
 en ningún momento.
+
+## Logo nuevo de Gastro Central (06/11)
+
+Mariluz pidió un logo para la web que fuera acorde al diseño ya
+existente. Se armaron dos propuestas usando los mismos colores de
+siempre (navy `#1E3A5F` y azul `#2563EB`) y la misma tipografía (Inter):
+un monograma con la letra "G", y un anillo con un "slice" en azul, como
+un plato visto desde arriba o un gráfico de torta de food cost. Mariluz
+eligió la segunda opción.
+
+**Dónde se usa:** reemplaza el cuadrado con las letras "GC" que estaba
+antes en el header y en la pantalla de login. También es el nuevo
+ícono de la pestaña del navegador (favicon) y el ícono que aparece si
+alguien agrega la web a la pantalla de inicio en un iPhone.
+
+**Cómo está armado:** es un dibujo vectorial (SVG), no una foto — se ve
+nítido en cualquier tamaño, desde el ícono chico de la pestaña hasta el
+logo grande del login. Vive en un componente reutilizable
+(`LogoGastroCentral.tsx`) para no repetir el dibujo en cada lugar donde
+se usa.
+
+Archivos tocados: `src/components/LogoGastroCentral.tsx` (nuevo),
+`src/app/icon.svg` (nuevo, favicon), `src/app/apple-icon.png` (nuevo,
+ícono para iPhone), `src/components/HeaderProtegido.tsx`,
+`src/app/login/page.tsx`.
+
+No se modificó ni se tocó el GastroCore viejo (`gastro-core.vercel.app`)
+en ningún momento.
