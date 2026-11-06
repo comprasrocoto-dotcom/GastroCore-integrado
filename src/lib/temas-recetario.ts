@@ -9,7 +9,21 @@
  *
  * Cada sede elige su estilo en Configuración; no cambia ninguna fórmula
  * ni ningún dato, solo el color con el que se ve su Recetario.
+ *
+ * Colores reales (06/11): Mariluz mandó la paleta de 6 colores pastel
+ * que reemplaza los colores provisionales que había antes (pidió
+ * "poné la paleta en la web, y yo la elijo según necesidad" — o sea, no
+ * es un color fijo por marca, sigue siendo ella la que elige el estilo
+ * por sede, como ya funcionaba). Cada uno de los 6 estilos ahora usa uno
+ * de sus colores reales como color principal (banner y acento), y los 6
+ * estilos comparten la misma paleta completa de 6 colores para pintar
+ * las categorías/familias del Recetario — así, elija el estilo que elija
+ * cada sede, las tarjetas de distintas familias siempre se distinguen
+ * con los 6 colores reales de la marca, no con colores inventados.
  */
+
+const PALETA_REAL = ["#B2D6C0", "#8EBDB8", "#929EB7", "#F5C9CF", "#FADBD2", "#FFF5E0"];
+const TEXTO_SOBRE_PASTEL = "#1F2937";
 
 export type TemaRecetario = {
   id: string;
@@ -29,63 +43,63 @@ export type TemaRecetario = {
 export const TEMAS_RECETARIO: TemaRecetario[] = [
   {
     id: "rocoto",
-    nombre: "Rocoto clásico",
-    descripcion: "Rojo rocoto con acentos naranja — el clásico de la casa.",
-    bannerDesde: "#B91C1C",
-    bannerHasta: "#EA580C",
-    bannerTexto: "#FFFFFF",
-    acento: "#B91C1C",
-    categorias: ["#B91C1C", "#EA580C", "#C2410C", "#991B1B", "#D97706", "#DC2626"],
+    nombre: "Verde salvia",
+    descripcion: "Verde salvia suave, el primero de la paleta real.",
+    bannerDesde: PALETA_REAL[0],
+    bannerHasta: PALETA_REAL[0],
+    bannerTexto: TEXTO_SOBRE_PASTEL,
+    acento: PALETA_REAL[0],
+    categorias: PALETA_REAL,
   },
   {
     id: "malanga",
-    nombre: "Malanga tropical",
-    descripcion: "Verdes tropicales, fresco y natural.",
-    bannerDesde: "#15803D",
-    bannerHasta: "#65A30D",
-    bannerTexto: "#FFFFFF",
-    acento: "#15803D",
-    categorias: ["#15803D", "#65A30D", "#0D9488", "#4D7C0F", "#166534", "#059669"],
+    nombre: "Verde azulado",
+    descripcion: "Verde azulado, el segundo de la paleta real.",
+    bannerDesde: PALETA_REAL[1],
+    bannerHasta: PALETA_REAL[1],
+    bannerTexto: TEXTO_SOBRE_PASTEL,
+    acento: PALETA_REAL[1],
+    categorias: PALETA_REAL,
   },
   {
     id: "pacifico",
-    nombre: "Pacífico",
-    descripcion: "Azules de mar, tranquilo y profesional.",
-    bannerDesde: "#0C4A6E",
-    bannerHasta: "#0891B2",
-    bannerTexto: "#FFFFFF",
-    acento: "#0369A1",
-    categorias: ["#0369A1", "#0891B2", "#0C4A6E", "#155E75", "#2563EB", "#0E7490"],
+    nombre: "Azul grisáceo",
+    descripcion: "Azul grisáceo, el tercero de la paleta real.",
+    bannerDesde: PALETA_REAL[2],
+    bannerHasta: PALETA_REAL[2],
+    bannerTexto: TEXTO_SOBRE_PASTEL,
+    acento: PALETA_REAL[2],
+    categorias: PALETA_REAL,
   },
   {
     id: "aji-amarillo",
-    nombre: "Ají amarillo",
-    descripcion: "Amarillo y naranja, cálido y llamativo.",
-    bannerDesde: "#B45309",
-    bannerHasta: "#EAB308",
-    bannerTexto: "#1F2937",
-    acento: "#B45309",
-    categorias: ["#B45309", "#D97706", "#CA8A04", "#A16207", "#EA580C", "#854D0E"],
+    nombre: "Rosa",
+    descripcion: "Rosa suave, el cuarto de la paleta real.",
+    bannerDesde: PALETA_REAL[3],
+    bannerHasta: PALETA_REAL[3],
+    bannerTexto: TEXTO_SOBRE_PASTEL,
+    acento: PALETA_REAL[3],
+    categorias: PALETA_REAL,
   },
   {
     id: "carbon",
-    nombre: "Carbón elegante",
-    descripcion: "Gris carbón y negro, sobrio y elegante.",
-    bannerDesde: "#18181B",
-    bannerHasta: "#3F3F46",
-    bannerTexto: "#FFFFFF",
-    acento: "#27272A",
-    categorias: ["#27272A", "#52525B", "#71717A", "#3F3F46", "#18181B", "#A1A1AA"],
+    nombre: "Durazno",
+    descripcion: "Durazno suave, el quinto de la paleta real.",
+    bannerDesde: PALETA_REAL[4],
+    bannerHasta: PALETA_REAL[4],
+    bannerTexto: TEXTO_SOBRE_PASTEL,
+    acento: PALETA_REAL[4],
+    categorias: PALETA_REAL,
   },
   {
     id: "vino",
-    nombre: "Vino tinto",
-    descripcion: "Vino y borgoña, cálido y señorial.",
-    bannerDesde: "#4C0519",
-    bannerHasta: "#9F1239",
-    bannerTexto: "#FFFFFF",
-    acento: "#7F1D1D",
-    categorias: ["#7F1D1D", "#9F1239", "#881337", "#4C0519", "#BE123C", "#9A3412"],
+    nombre: "Crema",
+    descripcion: "Crema suave, el sexto de la paleta real.",
+    bannerDesde: PALETA_REAL[5],
+    bannerHasta: PALETA_REAL[5],
+    bannerTexto: TEXTO_SOBRE_PASTEL,
+    acento: PALETA_REAL[5],
+    categorias: PALETA_REAL,
   },
 ];
 
