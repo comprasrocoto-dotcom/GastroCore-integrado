@@ -3,11 +3,13 @@ import { getUsuarioActual, tieneModulo } from "@/lib/auth/usuario-actual";
 import { getSedesVisibles, resolverSedeActiva } from "@/lib/data/sedes";
 import { listarInsumos, obtenerUltimasVariaciones } from "@/lib/data/insumos";
 import { obtenerConfiguracionCosteo } from "@/lib/data/configuracion";
+import { eliminarInsumo } from "./actions";
+import BotonEliminarInsumo from "./BotonEliminarInsumo";
 
 export default async function InsumosPage({
   searchParams,
 }: {
-  searchParams: { sede?: string; q?: string; pagina?: string };
+  searchParams: { sede?: string; q?: string; pagina?: string; error?: string };
 }) {
   const usuario = await getUsuarioActual();
   if (!usuario) return null;
@@ -45,11 +47,25 @@ export default async function InsumosPage({
           <p className="eyebrow">{sedeActiva.marca_nombre} / {sedeActiva.nombre}</p>
           <h1 className="text-xl font-semibold">Insumos</h1>
           <p className="mt-1 text-sm" style={{ color: "var(--muted)" }}>{total} insumos</p>
+          <p className="mt-1 text-xs" style={{ color: "var(--muted)" }}>
+            "Eliminar" borra el insumo de verdad y no se puede deshacer — solo funciona si no
+            está usado en ninguna receta ni subreceta. Si lo está, desactivalo (campo "Activo",
+            al editarlo) en vez de eliminarlo.
+          </p>
         </div>
         <Link href={`/insumos/nuevo?sede=${sedeActiva.id}`} className="btn-primary">
           + Nuevo insumo
         </Link>
       </div>
+
+      {searchParams.error && (
+        <div
+          className="rounded-lg border px-3 py-2 text-sm"
+          style={{ borderColor: "#fca5a5", background: "#fef2f2", color: "#b91c1c" }}
+        >
+          {searchParams.error}
+        </div>
+      )}
 
       <form className="flex gap-2">
         <input type="hidden" name="sede" value={sedeActiva.id} />
@@ -110,9 +126,17 @@ export default async function InsumosPage({
                       })}
                     </td>
                     <td className="text-right">
-                      <Link href={`/insumos/${i.id}?sede=${sedeActiva.id}`} className="text-sm font-medium text-[#2563EB] hover:underline">
-                        Editar
-                      </Link>
+                      <div className="flex items-center justify-end gap-3">
+                        <Link href={`/insumos/${i.id}?sede=${sedeActiva.id}`} className="text-sm font-medium text-[#2563EB] hover:underline">
+                          Editar
+                        </Link>
+                        <form action={eliminarInsumo}>
+                          <input type="hidden" name="id" value={i.id} />
+                          <input type="hidden" name="nombre" value={i.articulo} />
+                          <input type="hidden" name="sede_id" value={sedeActiva.id} />
+                          <BotonEliminarInsumo etiqueta={i.articulo} />
+                        </form>
+                      </div>
                     </td>
                   </tr>
                 );
