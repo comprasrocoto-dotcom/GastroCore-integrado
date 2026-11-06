@@ -53,9 +53,14 @@ export default async function InsumosPage({
             al editarlo) en vez de eliminarlo.
           </p>
         </div>
-        <Link href={`/insumos/nuevo?sede=${sedeActiva.id}`} className="btn-primary">
-          + Nuevo insumo
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link href={`/insumos/importar?sede=${sedeActiva.id}`} className="btn-secondary">
+            Cargar costos desde archivo
+          </Link>
+          <Link href={`/insumos/nuevo?sede=${sedeActiva.id}`} className="btn-primary">
+            + Nuevo insumo
+          </Link>
+        </div>
       </div>
 
       {searchParams.error && (
