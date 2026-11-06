@@ -1453,3 +1453,25 @@ Archivos tocados: `src/components/LogoGastroCentral.tsx` (nuevo),
 
 No se modificó ni se tocó el GastroCore viejo (`gastro-core.vercel.app`)
 en ningún momento.
+
+## Nombre del insumo sin la unidad duplicada (06/11)
+
+Mariluz notó que en la tabla de ingredientes de una receta (y en el
+buscador para agregar un ingrediente) el nombre de algunos insumos
+aparecía repetido con la unidad al final, por ejemplo "SUB. GUAYABA
+AGRIA — GRAMOS", cuando la unidad ya tiene su propia columna al lado
+("Unidad").
+
+Se revisaron los datos reales de insumos en la base: ese texto extra
+(el campo "Subartículo") casi siempre es solo el mismo nombre de la
+unidad escrito de otra forma — "GRAMOS"/"GRAMO" para GR, "UNIDAD"/
+"UNIDADES" para UND, "ONZA" para OZ, "COPA" para COPA, etc. — así que
+se sacó esa parte de donde se arma el nombre visible del insumo, tanto
+en la tabla de ingredientes de la receta/subreceta (y su PDF y su
+Excel) como en el buscador de insumos al agregar un ingrediente. La
+unidad se sigue viendo, pero solo una vez, en su propia columna.
+
+La columna "Subartículo" de la pantalla de Insumos (el catálogo
+general) no se tocó — es una pantalla distinta y no se pidió cambiarla.
+
+Archivo tocado: `src/lib/data/ingredientes.ts`.
