@@ -95,3 +95,50 @@ export async function actualizarInsumo(
   revalidatePath("/insumos");
   redirect(`/insumos?sede=${sedeId}`);
 }
+
+/**
+ * Eliminar de verdad (06/11, a pedido explícito de Mariluz): borra la
+ * fila para siempre, a diferencia de "Activo" que siempre se puede
+ * deshacer. Mismo patrón que ya se usa para Marcas y Sedes (20/10): solo
+ * se permite si el insumo no está cargado como ingrediente de ninguna
+ * receta/subreceta, ni es el insumo maestro de ninguna subreceta. Si lo
+ * está, hay que sacarlo de ahí primero o usar "Activo" en vez de
+ * "Eliminar" — para no romper ningún costo ya calculado. El historial de
+ * precios de este insumo (`precios_historicos`) se borra junto con él
+ * automáticamente (son solo números viejos de ESTE insumo, no datos
+ * compartidos con nada más).
+ */
+export async function eliminarInsumo(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  const nombre = String(formData.get("nombre") ?? "");
+  const sedeId = String(formData.get("sede_id") ?? "");
+  if (!id) return;
+
+  const supabase = createClient();
+
+  const [ingredientesRes, subrecetasRes] = await Promise.all([
+    supabase.from("ingredientes_receta").select("id", { count: "exact", head: true }).eq("insumo_id", id),
+    supabase.from("subrecetas").select("id", { count: "exact", head: true }).eq("insumo_id", id),
+  ]);
+
+  const enIngredientes = ingredientesRes.count ?? 0;
+  const comoMaestro = subrecetasRes.count ?? 0;
+
+  if (enIngredientes > 0 || comoMaestro > 0) {
+    const detalle = [
+      enIngredientes > 0 ? `usado en ${enIngredientes} ingrediente(s) de receta/subreceta` : null,
+      comoMaestro > 0 ? `es el insumo maestro de ${comoMaestro} subreceta(s)` : null,
+    ]
+      .filter(Boolean)
+      .join(" y ");
+    redirect(
+      `/insumos?sede=${sedeId}&error=${encodeURIComponent(
+        `No se pudo eliminar "${nombre}": está ${detalle}. Sacalo de ahí primero, o usá "Activo" en vez de "Eliminar".`
+      )}`
+    );
+  }
+
+  await supabase.from("insumos").delete().eq("id", id);
+  revalidatePath("/insumos");
+  redirect(`/insumos?sede=${sedeId}`);
+}
