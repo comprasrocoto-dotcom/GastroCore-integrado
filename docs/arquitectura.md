@@ -1475,3 +1475,52 @@ La columna "Subartículo" de la pantalla de Insumos (el catálogo
 general) no se tocó — es una pantalla distinta y no se pidió cambiarla.
 
 Archivo tocado: `src/lib/data/ingredientes.ts`.
+
+## Barra lateral de íconos y pestañas en Recetario (01/11)
+
+Mariluz mandó una foto de otra herramienta que usa (un "Informe de
+Rentabilidad" que no tiene nada que ver con GastroCore viejo ni con
+Gastro Central) y pidió que la app adoptara esa misma estructura: una
+barra lateral angosta de íconos a la izquierda en vez del menú
+horizontal de arriba, y confirmó que es para **toda la app**, no solo
+para Recetario.
+
+Se armó una barra lateral fija (ancho 72px, fondo con el color de
+marca) con un ícono por cada sección — Insumos, Subrecetas, Recetas,
+Familias, Configuración, Recetario, y (para el Admin multi-marca)
+Marcas y Usuarios — resaltando con fondo blanco la sección activa, más
+un botón de "Salir" abajo del todo. En pantallas angostas (celular) la
+barra lateral se esconde y en su lugar aparece, como antes, una fila
+horizontal de íconos con su nombre debajo, para no perder la
+navegación en mobile.
+
+Al principio los íconos eran los mismos emojis que ya se usaban; a
+pedido de Mariluz se cambiaron por íconos de línea dibujados a mano
+(trazo simple, sin depender de ninguna librería externa) para que se
+vean más profesionales, parecido a la herramienta de referencia.
+
+Dentro de la pantalla de Recetario en particular, la lista de
+secciones (Todas / Sub. recetas / cada familia de recetas) que antes
+era una columna angosta a la izquierda ahora es una fila de pestañas
+horizontales arriba del todo, debajo del banner — deja más espacio
+para la grilla de recetas y queda más parecido a la herramienta de
+referencia que mostró Mariluz.
+
+El nombre del archivo `HeaderProtegido.tsx` se mantuvo igual aunque
+ahora es principalmente una barra lateral (y no un header horizontal)
+porque sigue siendo el único componente de navegación de las pantallas
+protegidas — cambiar el nombre del archivo hubiera sido un cambio sin
+ningún beneficio real.
+
+Pendiente, todavía no se tocó: los colores de la barra lateral y de
+las pestañas siguen usando la paleta genérica actual (6 estilos
+"Rocoto / Malanga / Pacífico / Ají Amarillo / Carbón / Vino" con
+colores inventados, elegibles por sede en Configuración) — cuando
+Mariluz mande la paleta real de colores de cada marca, esos mismos
+estilos se actualizan con los colores reales en vez de los
+provisionales.
+
+Archivos tocados: `src/components/IconosNav.tsx` (nuevo),
+`src/components/HeaderProtegido.tsx`,
+`src/app/(protegido)/layout.tsx`,
+`src/app/(protegido)/recetario/RecetarioExplorador.tsx`.
