@@ -65,11 +65,11 @@ export default function RecetarioExplorador({
     }
   }
 
-  const botonSeccionEstilo = (activa: boolean): React.CSSProperties =>
-    activa ? { background: tema.acento, color: tema.bannerTexto } : {};
-  const botonSeccionClase = (activa: boolean) =>
-    `flex items-center justify-between rounded-lg px-3 py-2 text-left text-sm transition-colors ${
-      activa ? "" : "hover:bg-slate-100"
+  const botonPestañaEstilo = (activa: boolean): React.CSSProperties =>
+    activa ? { background: tema.acento, color: tema.bannerTexto, borderColor: tema.acento } : {};
+  const botonPestañaClase = (activa: boolean) =>
+    `flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors ${
+      activa ? "" : "border-slate-200 text-slate-600 hover:bg-slate-100"
     }`;
 
   return (
@@ -85,58 +85,49 @@ export default function RecetarioExplorador({
         <span className="text-xs opacity-80">{items.length} preparaciones</span>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[220px_1fr]">
-        <aside className="flex flex-col gap-1">
-          <p className="mb-1 px-1 text-[11px] font-bold uppercase tracking-widest text-slate-400">
-            Secciones
-          </p>
-          <button
-            className={botonSeccionClase(seccion === "todas")}
-            style={botonSeccionEstilo(seccion === "todas")}
-            onClick={() => setSeccion("todas")}
-          >
-            <span>Todas</span>
-            <span className="text-xs opacity-70">{items.length}</span>
-          </button>
-          <button
-            className={botonSeccionClase(seccion === "subrecetas")}
-            style={botonSeccionEstilo(seccion === "subrecetas")}
-            onClick={() => setSeccion("subrecetas")}
-          >
-            <span>Sub. recetas</span>
-            <span className="text-xs opacity-70">{totalSubrecetas}</span>
-          </button>
-          {categorias.length > 0 && (
-            <>
-              <p className="mb-1 mt-3 px-1 text-[11px] font-bold uppercase tracking-widest text-slate-400">
-                Categorías
-              </p>
-              {categorias.map(([nombre, cantidad], indice) => {
-                const activa = seccion !== "todas" && seccion !== "subrecetas" && seccion.familia === nombre;
-                return (
-                  <button
-                    key={nombre}
-                    className={botonSeccionClase(activa)}
-                    style={botonSeccionEstilo(activa)}
-                    onClick={() => setSeccion({ familia: nombre })}
-                  >
-                    <span className="flex items-center gap-2 truncate">
-                      <span
-                        className="h-2 w-2 shrink-0 rounded-full"
-                        style={{ background: activa ? tema.bannerTexto : colorCategoria(tema, indice) }}
-                      />
-                      {nombre}
-                    </span>
-                    <span className="text-xs opacity-70">{cantidad}</span>
-                  </button>
-                );
-              })}
-            </>
-          )}
-        </aside>
+      {/* Pestañas horizontales por sección/familia (antes era una lista
+          vertical a la izquierda — se pasó a pestañas arriba a pedido de
+          Mariluz, 01/11, ver docs/arquitectura.md). Con scroll horizontal
+          si no entran todas en el ancho disponible. */}
+      <div className="-mx-1 flex items-center gap-2 overflow-x-auto px-1 pb-1">
+        <button
+          className={botonPestañaClase(seccion === "todas")}
+          style={botonPestañaEstilo(seccion === "todas")}
+          onClick={() => setSeccion("todas")}
+        >
+          Todas
+          <span className="text-xs opacity-70">{items.length}</span>
+        </button>
+        <button
+          className={botonPestañaClase(seccion === "subrecetas")}
+          style={botonPestañaEstilo(seccion === "subrecetas")}
+          onClick={() => setSeccion("subrecetas")}
+        >
+          Sub. recetas
+          <span className="text-xs opacity-70">{totalSubrecetas}</span>
+        </button>
+        {categorias.map(([nombre, cantidad], indice) => {
+          const activa = seccion !== "todas" && seccion !== "subrecetas" && seccion.familia === nombre;
+          return (
+            <button
+              key={nombre}
+              className={botonPestañaClase(activa)}
+              style={botonPestañaEstilo(activa)}
+              onClick={() => setSeccion({ familia: nombre })}
+            >
+              <span
+                className="h-2 w-2 shrink-0 rounded-full"
+                style={{ background: activa ? tema.bannerTexto : colorCategoria(tema, indice) }}
+              />
+              {nombre}
+              <span className="text-xs opacity-70">{cantidad}</span>
+            </button>
+          );
+        })}
+      </div>
 
-        <div className="flex flex-col gap-4">
-          <input
+      <div className="flex flex-col gap-4">
+        <input
           type="search"
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
@@ -176,7 +167,6 @@ export default function RecetarioExplorador({
               No se encontraron recetas.
             </p>
           )}
-        </div>
         </div>
       </div>
 
