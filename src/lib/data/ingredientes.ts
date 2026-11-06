@@ -22,7 +22,7 @@ async function mapLineas(
   let query = supabase
     .from("ingredientes_receta")
     .select(
-      "id, tipo_item, insumo_id, subreceta_id, cantidad, unidad_codigo, merma_pct, costo_unitario, costo_linea, orden, insumos(articulo, subarticulo), subrecetas!subreceta_id(nombre)"
+      "id, tipo_item, insumo_id, subreceta_id, cantidad, unidad_codigo, merma_pct, costo_unitario, costo_linea, orden, insumos(articulo), subrecetas!subreceta_id(nombre)"
     )
     .order("orden");
 
@@ -34,21 +34,19 @@ async function mapLineas(
   if (error || !data) return [];
 
   return data.map((fila) => {
-    const insumo = fila.insumos as unknown as {
-      articulo: string;
-      subarticulo: string | null;
-    } | null;
+    const insumo = fila.insumos as unknown as { articulo: string } | null;
     const subreceta = fila.subrecetas as unknown as { nombre: string } | null;
     return {
       id: fila.id as string,
       tipo_item: fila.tipo_item as "insumo" | "subreceta",
       insumo_id: fila.insumo_id as string | null,
       subreceta_id: fila.subreceta_id as string | null,
-      descripcion: insumo
-        ? insumo.subarticulo
-          ? `${insumo.articulo} — ${insumo.subarticulo}`
-          : insumo.articulo
-        : subreceta?.nombre ?? "—",
+      // El nombre del insumo NO lleva la unidad pegada (antes se armaba
+      // "Articulo — Subarticulo", pero en la práctica subarticulo casi
+      // siempre es solo el nombre de la unidad en otras palabras —
+      // "GRAMOS" para GR, "UNIDAD" para UND, "COPA" para COPA, etc. — y
+      // quedaba duplicado con la columna Unidad de al lado).
+      descripcion: insumo ? insumo.articulo : subreceta?.nombre ?? "—",
       cantidad: Number(fila.cantidad),
       unidad_codigo: fila.unidad_codigo as string | null,
       merma_pct: Number(fila.merma_pct),
@@ -85,7 +83,7 @@ export async function listarInsumosParaPicker(
   const supabase = createClient();
   const { data, error } = await supabase
     .from("insumos")
-    .select("id, referencia, articulo, subarticulo, coste, unidad_codigo, merma_std, subfamilias(nombre)")
+    .select("id, referencia, articulo, coste, unidad_codigo, merma_std, subfamilias(nombre)")
     .eq("sede_id", sedeId)
     .eq("activo", true)
     .order("articulo");
@@ -93,7 +91,9 @@ export async function listarInsumosParaPicker(
   if (error || !data) return [];
   return data.map((i) => ({
     id: i.id as string,
-    etiqueta: i.subarticulo ? `${i.articulo} — ${i.subarticulo}` : (i.articulo as string),
+    // Igual que en mapLineas: el buscador de insumos ya no muestra la
+    // unidad pegada al nombre, para no duplicarla con la columna Unidad.
+    etiqueta: i.articulo as string,
     referencia: i.referencia as string | null,
     subfamilia_nombre: (i.subfamilias as unknown as { nombre: string } | null)?.nombre ?? null,
     coste: Number(i.coste),
