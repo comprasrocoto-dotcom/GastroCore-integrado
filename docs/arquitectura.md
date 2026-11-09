@@ -1783,3 +1783,46 @@ mostrarse vacía).
 
 Archivo tocado: `src/app/(protegido)/recetario/RecetarioExplorador.tsx`
 (solo la presentación — no se tocó cómo se arman ni se filtran los datos).
+
+## Rediseñar el Recetario con menú de Secciones (09/11)
+
+Mariluz mandó una captura del Recetario del sistema viejo (SINPAR) pidiendo
+que el Recetario del sistema nuevo se viera así: un menú lateral vertical
+de "Secciones" agrupando las categorías por Bar y Cocina, y una ventana de
+detalle con encabezado oscuro.
+
+Antes de tocar nada se confirmaron tres puntos, para no pisar decisiones ya
+tomadas antes en el proyecto:
+
+- La captura es del sistema viejo (nunca se toca) — es solo la referencia
+  visual a copiar en el sistema nuevo.
+- El pedido significaba volver al menú lateral vertical de secciones (hace
+  poco se había cambiado a pestañas horizontales) — confirmado que sí, se
+  vuelve al vertical.
+- La separación de Sub. Recetas en Cocina y Bar que se acababa de hacer
+  (ver la sección anterior de este documento) se mantiene — aunque la foto
+  del sistema viejo las mostraba juntas en una sola fila, se confirmó que
+  siguen separadas, ahora anidadas dentro de cada grupo (Bar/Cocina) del
+  nuevo menú.
+
+Cambios hechos:
+
+- El Recetario ahora muestra un menú lateral "Secciones" (como el sistema
+  viejo), con "Todas" arriba y después los grupos Bar y Cocina, cada uno
+  con su fila de "Sub. Recetas" y las familias de recetas, mostrando la
+  cantidad de preparaciones al lado de cada una.
+- El encabezado de la pantalla pasó a ser una franja oscura con el nombre
+  de la marca/sede y el título "Recetario de Cocina" o "Recetario de Bar"
+  según corresponda.
+- En la ventana de detalle de cada receta: encabezado oscuro con el
+  nombre, la columna de la tabla de ingredientes ahora dice "Unidad de
+  Medida", y los pasos de Preparación se muestran numerados (1, 2, 3...)
+  en vez de un solo párrafo.
+- Los colores de identidad por sede (los 6 estilos que Mariluz ya elige en
+  Configuración) se mantienen — se siguen usando para resaltar la sección
+  activa y las tarjetas de cada categoría.
+
+Archivos tocados: `src/app/(protegido)/recetario/RecetarioExplorador.tsx`
+(el rediseño completo de la pantalla) y
+`src/app/(protegido)/recetario/page.tsx` (le pasa a la pantalla el nombre
+de la marca/sede y el área activa).
