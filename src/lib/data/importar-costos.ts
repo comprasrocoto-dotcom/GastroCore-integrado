@@ -29,6 +29,21 @@ import type { FilaArchivoCosto } from "@/lib/excel/costos";
  *   base, como pasaba con "SUB. FOSFORITOS DE PAPA" en Rocoto) no se
  *   toca automáticamente — queda como "sin cambio" para resolverlo a
  *   mano, en vez de adivinar cuál de los dos es el correcto.
+ * - La columna "Subartículo" del archivo (que en realidad trae la
+ *   unidad en palabras) se guarda tal cual en el campo "Subartículo"
+ *   del insumo nuevo, además de seguir usándose para calcular la
+ *   Unidad — confirmado por Mariluz (09/11).
+ * - Si la subfamilia del archivo no existe todavía en esa sede, se crea
+ *   sola (igual que un insumo nuevo) — y si tampoco existe ninguna
+ *   familia para esa subfamilia, se crea también una familia nueva con
+ *   el mismo nombre que la subfamilia (ej. archivo trae "ABARROTES" →
+ *   se crea familia "ABARROTES" con la subfamilia "ABARROTES" adentro).
+ *   Confirmado por Mariluz (09/11) para el caso de una sede nueva
+ *   (Tatequieto) que no tenía ninguna familia/subfamilia cargada
+ *   todavía. Esto solo pasa para insumos que se están CREANDO — a un
+ *   insumo ya existente que solo cambia de costo nunca se le toca la
+ *   subfamilia, para no pisar una clasificación que Mariluz ya haya
+ *   hecho a mano.
  */
 
 export type AccionItemImportacion = "actualizar" | "crear" | "sin_cambio";
@@ -37,6 +52,7 @@ export type ItemPlanImportacion = {
   articulo: string;
   codigoArchivo: string | null;
   unidadCodigo: string | null;
+  subarticulo: string | null;
   subfamiliaNombre: string | null;
   subfamiliaId: string | null;
   costeArchivo: number;
@@ -103,6 +119,7 @@ export async function armarPlanImportacion(
         articulo: fila.articulo,
         codigoArchivo: fila.codigo,
         unidadCodigo: fila.unidadCodigo,
+        subarticulo: fila.subarticulo,
         subfamiliaNombre: fila.subfamiliaNombre,
         subfamiliaId,
         costeArchivo: fila.coste,
@@ -117,6 +134,7 @@ export async function armarPlanImportacion(
         articulo: fila.articulo,
         codigoArchivo: fila.codigo,
         unidadCodigo: fila.unidadCodigo,
+        subarticulo: fila.subarticulo,
         subfamiliaNombre: fila.subfamiliaNombre,
         subfamiliaId,
         costeArchivo: fila.coste,
@@ -132,6 +150,7 @@ export async function armarPlanImportacion(
       articulo: fila.articulo,
       codigoArchivo: fila.codigo,
       unidadCodigo: fila.unidadCodigo,
+      subarticulo: fila.subarticulo,
       subfamiliaNombre: fila.subfamiliaNombre,
       subfamiliaId,
       costeArchivo: fila.coste,
@@ -174,6 +193,65 @@ export type ResultadoAplicarImportacion = {
  * que el cambio de costo de los insumos se note de inmediato en las
  * recetas, tal como lo pidió Mariluz.
  */
+function normalizarNombreFamilia(texto: string): string {
+  return texto.trim().toUpperCase().replace(/\s+/g, " ");
+}
+
+/**
+ * Busca o crea (familia + subfamilia, en ese orden) para cada nombre de
+ * subfamilia que el archivo trae y que todavía no existe en la sede.
+ * La familia nueva se crea con el mismo nombre que la subfamilia, tal
+ * como confirmó Mariluz (09/11) — después se puede reorganizar desde la
+ * pantalla de Familias sin afectar ningún costo.
+ *
+ * Devuelve un mapa nombre normalizado → id de subfamilia, para los
+ * nombres que hacía falta crear (los que ya existían no están acá,
+ * `armarPlanImportacion` ya les había encontrado su id).
+ */
+async function crearSubfamiliasFaltantes(
+  supabase: ReturnType<typeof createClient>,
+  sedeId: string,
+  nombres: string[]
+): Promise<Map<string, string>> {
+  const resultado = new Map<string, string>();
+  if (nombres.length === 0) return resultado;
+
+  const { data: familiasExistentes } = await supabase
+    .from("familias")
+    .select("id, nombre")
+    .eq("sede_id", sedeId);
+  const familiaIdPorNombre = new Map<string, string>();
+  for (const f of familiasExistentes ?? []) {
+    familiaIdPorNombre.set(normalizarNombreFamilia(f.nombre as string), f.id as string);
+  }
+
+  for (const nombre of nombres) {
+    const clave = normalizarNombreFamilia(nombre);
+
+    let familiaId = familiaIdPorNombre.get(clave);
+    if (!familiaId) {
+      const { data: familiaNueva, error: errorFamilia } = await supabase
+        .from("familias")
+        .insert({ sede_id: sedeId, nombre })
+        .select("id")
+        .single();
+      if (errorFamilia || !familiaNueva) continue;
+      familiaId = familiaNueva.id as string;
+      familiaIdPorNombre.set(clave, familiaId);
+    }
+
+    const { data: subfamiliaNueva, error: errorSubfamilia } = await supabase
+      .from("subfamilias")
+      .insert({ sede_id: sedeId, familia_id: familiaId, nombre })
+      .select("id")
+      .single();
+    if (errorSubfamilia || !subfamiliaNueva) continue;
+    resultado.set(clave, subfamiliaNueva.id as string);
+  }
+
+  return resultado;
+}
+
 export async function aplicarPlanImportacion(
   sedeId: string,
   usuarioId: string | null,
@@ -183,6 +261,21 @@ export async function aplicarPlanImportacion(
 
   let actualizados = 0;
   let creados = 0;
+
+  // Subfamilias que hacen falta crear: solo para insumos nuevos (nunca
+  // se toca la subfamilia de uno que ya existía), y solo los nombres
+  // que `armarPlanImportacion` no pudo encontrar.
+  const nombresSubfamiliaFaltante = new Set<string>();
+  for (const item of items) {
+    if (item.accion === "crear" && item.subfamiliaNombre && !item.subfamiliaId) {
+      nombresSubfamiliaFaltante.add(item.subfamiliaNombre);
+    }
+  }
+  const subfamiliaIdCreadaPorNombre = await crearSubfamiliasFaltantes(
+    supabase,
+    sedeId,
+    Array.from(nombresSubfamiliaFaltante)
+  );
 
   for (const item of items) {
     if (item.accion === "actualizar" && item.insumoId) {
@@ -203,10 +296,16 @@ export async function aplicarPlanImportacion(
         });
       }
     } else if (item.accion === "crear") {
+      const subfamiliaId =
+        item.subfamiliaId ??
+        (item.subfamiliaNombre
+          ? subfamiliaIdCreadaPorNombre.get(normalizarNombreFamilia(item.subfamiliaNombre)) ?? null
+          : null);
       const { error } = await supabase.from("insumos").insert({
         sede_id: sedeId,
         articulo: item.articulo,
-        subfamilia_id: item.subfamiliaId,
+        subarticulo: item.subarticulo,
+        subfamilia_id: subfamiliaId,
         unidad_codigo: item.unidadCodigo,
         coste: item.costeArchivo,
         referencia: item.codigoArchivo,
