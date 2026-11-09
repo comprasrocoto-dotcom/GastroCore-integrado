@@ -4,12 +4,12 @@ import { getSedesVisibles, resolverSedeActiva } from "@/lib/data/sedes";
 import { listarInsumos, obtenerUltimasVariaciones } from "@/lib/data/insumos";
 import { obtenerConfiguracionCosteo } from "@/lib/data/configuracion";
 import { eliminarInsumo } from "./actions";
-import BotonEliminarInsumo from "./BotonEliminarInsumo";
+import InsumosTabla, { type FilaInsumoVista } from "./InsumosTabla";
 
 export default async function InsumosPage({
   searchParams,
 }: {
-  searchParams: { sede?: string; q?: string; pagina?: string; error?: string };
+  searchParams: { sede?: string; q?: string; pagina?: string; error?: string; enviado?: string; creados?: string };
 }) {
   const usuario = await getUsuarioActual();
   if (!usuario) return null;
@@ -72,6 +72,15 @@ export default async function InsumosPage({
         </div>
       )}
 
+      {searchParams.enviado === "1" && (
+        <div
+          className="rounded-lg border px-3 py-2 text-sm"
+          style={{ borderColor: "#86efac", background: "#f0fdf4", color: "#166534" }}
+        >
+          Listo: se creó {searchParams.creados ?? 0} insumo(s) nuevo(s) en la sede destino.
+        </div>
+      )}
+
       <form className="flex gap-2">
         <input type="hidden" name="sede" value={sedeActiva.id} />
         <input
@@ -86,77 +95,18 @@ export default async function InsumosPage({
         </button>
       </form>
 
-      <div className="card overflow-hidden">
-        <div className="erp-scroll">
-          <table className="erp-table">
-            <thead>
-              <tr>
-                <th>Artículo</th>
-                <th>Subartículo</th>
-                <th>Familia / Subfamilia</th>
-                <th>Unidad</th>
-                <th className="text-right">Costo</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {insumos.map((i) => {
-                const variacion = variaciones[i.id];
-                const alerta =
-                  umbralAlerta !== null &&
-                  typeof variacion === "number" &&
-                  Math.abs(variacion) >= umbralAlerta;
-                return (
-                  <tr key={i.id} style={alerta ? { background: "#fef2f2" } : undefined}>
-                    <td className="font-medium">
-                      {alerta && (
-                        <span
-                          title={`Subió ${variacion.toFixed(1)}% en el último cambio de precio`}
-                          className="mr-1"
-                        >
-                          🔴
-                        </span>
-                      )}
-                      {i.articulo}
-                    </td>
-                    <td style={{ color: "var(--muted)" }}>{i.subarticulo ?? "—"}</td>
-                    <td style={{ color: "var(--muted)" }}>
-                      {i.familia_nombre ? `${i.familia_nombre} / ${i.subfamilia_nombre}` : "—"}
-                    </td>
-                    <td style={{ color: "var(--muted)" }}>{i.unidad_codigo ?? "—"}</td>
-                    <td className="text-right fin-value">
-                      {i.coste.toLocaleString("es-CO", {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })}
-                    </td>
-                    <td className="text-right">
-                      <div className="flex items-center justify-end gap-3">
-                        <Link href={`/insumos/${i.id}?sede=${sedeActiva.id}`} className="text-sm font-medium text-[#2563EB] hover:underline">
-                          Editar
-                        </Link>
-                        <form action={eliminarInsumo}>
-                          <input type="hidden" name="id" value={i.id} />
-                          <input type="hidden" name="nombre" value={i.articulo} />
-                          <input type="hidden" name="sede_id" value={sedeActiva.id} />
-                          <BotonEliminarInsumo etiqueta={i.articulo} />
-                        </form>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-              {insumos.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="px-4 py-6 text-center text-slate-400">
-                    No se encontraron insumos.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <InsumosTabla
+        insumos={insumos.map((i): FilaInsumoVista => {
+          const variacion = variaciones[i.id];
+          const alerta =
+            umbralAlerta !== null &&
+            typeof variacion === "number" &&
+            Math.abs(variacion) >= umbralAlerta;
+          return { ...i, alerta, variacionPct: typeof variacion === "number" ? variacion : null };
+        })}
+        sedeActivaId={sedeActiva.id}
+        eliminarInsumo={eliminarInsumo}
+      />
 
       {totalPaginas > 1 && (
         <div className="flex items-center justify-center gap-3 text-sm">
