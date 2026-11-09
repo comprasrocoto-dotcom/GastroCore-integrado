@@ -1753,3 +1753,33 @@ plan de envío), `src/app/(protegido)/insumos/enviar/actions.ts`,
 `src/app/(protegido)/insumos/InsumosTabla.tsx` (la tabla de Insumos con
 los casilleros de selección, antes era parte de `page.tsx`). Archivo
 tocado: `src/app/(protegido)/insumos/page.tsx` (usa la tabla nueva).
+
+## Separar las subrecetas del Recetario en Cocina y Bar (09/11)
+
+Mariluz mandó una captura del sistema viejo donde el Recetario (la pantalla
+que usan los cocineros y bartenders para consultar preparaciones, sin
+costos ni precios) mostraba las subrecetas separadas en dos categorías:
+"Sub recetas cocina" y "Sub recetas bar". Preguntó por qué en el sistema
+nuevo no se veía así.
+
+Antes de tocar nada se aclaró un punto importante: esa captura era del
+sistema VIEJO (gastro-core.vercel.app), que nunca se toca. El pedido real
+era construir lo mismo en el sistema nuevo.
+
+Buena noticia: el Recetario del sistema nuevo ya traía las subrecetas junto
+con las recetas, y ya respetaba Bar/Cocina para decidir quién puede ver
+qué (por el área del usuario, o por la clave de acceso cuando no tiene
+login propio) — eso no hizo falta tocarlo, ya funcionaba bien. Lo único
+que faltaba era la presentación: todas las subrecetas estaban juntas en
+una sola pestaña "Sub. recetas" en vez de separadas.
+
+Cambio hecho: la pestaña única se separó en "Sub. recetas cocina" y "Sub.
+recetas bar", usando el mismo Centro de Costo que ya tiene cada subreceta
+(el mismo dato que ya decide quién puede verla). Una subreceta sin Centro
+de Costo asignado, o marcada "Ambas", se sigue viendo desde las dos
+pestañas — igual que ya pasaba antes de este cambio. Si una sede no tiene
+subrecetas de un área, esa pestaña directamente no aparece (en vez de
+mostrarse vacía).
+
+Archivo tocado: `src/app/(protegido)/recetario/RecetarioExplorador.tsx`
+(solo la presentación — no se tocó cómo se arman ni se filtran los datos).
