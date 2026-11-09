@@ -2,11 +2,18 @@ import ExcelJS from "exceljs";
 
 /**
  * Lector del archivo plano de costos que sube Mariluz desde "Insumos →
- * Cargar costos desde archivo" (06/11). Formato real confirmado con un
- * archivo de ejemplo de Rocoto (`Base_de_Costos.xlsx`): una sola hoja,
- * columnas en este orden — Cód. Barras, Artículo, Subartículo (en la
- * práctica es la UNIDAD escrita en palabras, no un subartículo de
- * verdad), Subfamilia, Coste.
+ * Cargar costos desde archivo" (06/11). Formato real confirmado con dos
+ * archivos de ejemplo (Rocoto y Tatequieto, ambos iguales): una sola
+ * hoja, columnas en este orden — Cód. Barras, Artículo, Subartículo,
+ * Subfamilia, Coste.
+ *
+ * La columna "Subartículo" en la práctica solo trae la UNIDAD escrita en
+ * palabras (GRAMOS, UNIDADES, ONZA, COPA) — confirmado revisando ambos
+ * archivos completos, no hay otro dato de subartículo real en ellos.
+ * Mariluz confirmó (09/11) que ese mismo texto se use para DOS cosas a
+ * la vez: para calcular la Unidad (como ya hacía) y además se guarde tal
+ * cual en el campo "Subartículo" del insumo, para que esa columna de
+ * Insumos deje de quedar vacía al cargar un archivo nuevo.
  *
  * Este archivo solo lee y normaliza filas — no toca la base de datos.
  * El cruce contra los insumos existentes vive en
@@ -21,6 +28,7 @@ export type FilaArchivoCosto = {
   articulo: string;
   unidadPalabra: string | null;
   unidadCodigo: string | null;
+  subarticulo: string | null;
   subfamiliaNombre: string | null;
   coste: number;
   esSubreceta: boolean;
@@ -121,6 +129,7 @@ export async function leerFilasArchivoCosto(
       articulo,
       unidadPalabra,
       unidadCodigo: unidadPalabra ? MAPA_UNIDADES[unidadPalabra.toUpperCase()] ?? null : null,
+      subarticulo: unidadPalabra,
       subfamiliaNombre,
       coste: Number.isFinite(coste) ? coste : 0,
       esSubreceta: (codigo ?? "").toUpperCase().startsWith("SUB"),
