@@ -1682,3 +1682,40 @@ codificación), `src/lib/data/importar-costos.ts` (cruza contra la base y
 aplica los cambios), `src/app/(protegido)/insumos/importar/actions.ts`,
 `page.tsx` y `ImportarCostosForm.tsx`. Archivo tocado:
 `src/app/(protegido)/insumos/page.tsx` (el nuevo botón).
+
+
+## Arreglo: Subartículo y Familia/Subfamilia vacíos al cargar costos de una sede nueva (09/11)
+
+Mariluz avisó que después de cargar el archivo de costos de la sede
+"Tatequieto" (364 insumos), las columnas "Subartículo" y
+"Familia/Subfamilia" quedaron vacías en todos los insumos nuevos.
+
+**Qué se encontró:** Tatequieto es una sede nueva que todavía no tenía
+ninguna Familia ni Subfamilia cargada, así que ningún nombre del archivo
+podía encontrar dónde clasificarse. Además, se confirmó revisando el
+archivo real de Mariluz que la columna "Subartículo" del archivo en
+realidad siempre trae la unidad escrita en palabras (GRAMOS, UNIDADES,
+ONZA, COPA) — nunca un subartículo de verdad — así que antes de este
+arreglo ese dato se usaba solo para calcular la Unidad y se perdía, sin
+guardarse en ningún lado.
+
+**Dos reglas nuevas, confirmadas por Mariluz:**
+1. Esa misma columna "Subartículo" del archivo ahora se guarda tal cual
+   en el campo "Subartículo" del insumo, además de seguir usándose para
+   calcular la Unidad — ya no se pierde ese dato.
+2. Si una Subfamilia del archivo no existe todavía en la sede, se crea
+   sola; y si tampoco existe ninguna Familia para esa Subfamilia, se crea
+   también una Familia nueva con el mismo nombre (ej. el archivo trae
+   "ABARROTES" → se crea la Familia "ABARROTES" con la Subfamilia
+   "ABARROTES" adentro). Esto solo pasa para insumos que se están
+   CREANDO por primera vez — a un insumo que ya existía y solo cambia de
+   costo nunca se le toca la Subfamilia, para no pisar una clasificación
+   que Mariluz ya haya hecho a mano.
+
+**Importante:** este arreglo aplica para las próximas cargas, no cambia
+nada de lo que ya se cargó. Los 364 insumos de Tatequieto de la primera
+carga van a seguir con Subartículo y Familia/Subfamilia vacíos hasta que
+Mariluz vuelva a subir el mismo archivo una vez más — ese segundo
+archivo va a actualizar el costo (sin cambio, porque es el mismo) y esta
+vez sí va a completar el Subartículo y crear/asignar la Familia y
+Subfamilia correctas.
