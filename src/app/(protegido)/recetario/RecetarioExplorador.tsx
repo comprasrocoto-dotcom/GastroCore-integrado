@@ -14,7 +14,20 @@ function norm(s: string): string {
     .trim();
 }
 
-type Seccion = "todas" | "subrecetas" | { familia: string };
+type Seccion = "todas" | "subrecetas-cocina" | "subrecetas-bar" | { familia: string };
+
+/**
+ * Si el Centro de Costo de la subreceta no está cargado (null/"") o está
+ * marcado "AMBAS", se la considera visible desde las dos áreas — mismo
+ * criterio que ya usa `recetario/page.tsx` para decidir quién puede ver
+ * qué antes de que los items lleguen acá (09/11, pedido de Mariluz: separar
+ * la pestaña única "Sub. recetas" en "Sub recetas cocina" / "Sub recetas
+ * bar", igual que se veían en el sistema viejo).
+ */
+function perteneceAArea(centrocosto: string | null, area: "COCINA" | "BAR"): boolean {
+  const c = (centrocosto ?? "").toUpperCase();
+  return !c || c === "AMBAS" || c === area;
+}
 
 export default function RecetarioExplorador({
   items,
@@ -39,7 +52,12 @@ export default function RecetarioExplorador({
     return Array.from(mapa.entries()).sort((a, b) => a[0].localeCompare(b[0], "es"));
   }, [items]);
 
-  const totalSubrecetas = items.filter((i) => i.tipo === "subreceta").length;
+  const totalSubrecetasCocina = items.filter(
+    (i) => i.tipo === "subreceta" && perteneceAArea(i.centrocosto, "COCINA")
+  ).length;
+  const totalSubrecetasBar = items.filter(
+    (i) => i.tipo === "subreceta" && perteneceAArea(i.centrocosto, "BAR")
+  ).length;
 
   // Color por tarjeta (06/11, a pedido de Mariluz: "que se vean llamativas
   // no tan planas"). Cada familia usa el mismo color que ya tiene su
@@ -60,8 +78,10 @@ export default function RecetarioExplorador({
 
   const filtrados = useMemo(() => {
     let lista = items;
-    if (seccion === "subrecetas") {
-      lista = lista.filter((i) => i.tipo === "subreceta");
+    if (seccion === "subrecetas-cocina") {
+      lista = lista.filter((i) => i.tipo === "subreceta" && perteneceAArea(i.centrocosto, "COCINA"));
+    } else if (seccion === "subrecetas-bar") {
+      lista = lista.filter((i) => i.tipo === "subreceta" && perteneceAArea(i.centrocosto, "BAR"));
     } else if (seccion !== "todas") {
       lista = lista.filter((i) => i.tipo === "receta" && (i.familia_nombre ?? "Sin categoría") === seccion.familia);
     }
@@ -115,16 +135,28 @@ export default function RecetarioExplorador({
           Todas
           <span className="text-xs opacity-70">{items.length}</span>
         </button>
-        <button
-          className={botonPestañaClase(seccion === "subrecetas")}
-          style={botonPestañaEstilo(seccion === "subrecetas")}
-          onClick={() => setSeccion("subrecetas")}
-        >
-          Sub. recetas
-          <span className="text-xs opacity-70">{totalSubrecetas}</span>
-        </button>
+        {totalSubrecetasCocina > 0 && (
+          <button
+            className={botonPestañaClase(seccion === "subrecetas-cocina")}
+            style={botonPestañaEstilo(seccion === "subrecetas-cocina")}
+            onClick={() => setSeccion("subrecetas-cocina")}
+          >
+            Sub. recetas cocina
+            <span className="text-xs opacity-70">{totalSubrecetasCocina}</span>
+          </button>
+        )}
+        {totalSubrecetasBar > 0 && (
+          <button
+            className={botonPestañaClase(seccion === "subrecetas-bar")}
+            style={botonPestañaEstilo(seccion === "subrecetas-bar")}
+            onClick={() => setSeccion("subrecetas-bar")}
+          >
+            Sub. recetas bar
+            <span className="text-xs opacity-70">{totalSubrecetasBar}</span>
+          </button>
+        )}
         {categorias.map(([nombre, cantidad], indice) => {
-          const activa = seccion !== "todas" && seccion !== "subrecetas" && seccion.familia === nombre;
+          const activa = typeof seccion === "object" && seccion.familia === nombre;
           return (
             <button
               key={nombre}
