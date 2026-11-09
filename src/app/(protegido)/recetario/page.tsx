@@ -70,16 +70,12 @@ export default async function RecetarioPage({
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <p className="eyebrow">{sedeActiva.marca_nombre} / {sedeActiva.nombre}</p>
-        <h1 className="text-xl font-semibold">Recetario</h1>
-        <p className="mt-1 text-sm" style={{ color: "var(--muted)" }}>
-          Solo preparación y emplatado — sin costos ni precios.
-          {area && ` Viendo: ${area === "BAR" ? "Bar" : "Cocina"}.`}
-        </p>
-      </div>
-
-      <RecetarioExplorador items={items} tema={tema} />
+      <RecetarioExplorador
+        items={items}
+        tema={tema}
+        marcaNombre={`${sedeActiva.marca_nombre} · ${sedeActiva.nombre}`}
+        area={area}
+      />
     </div>
   );
 }
