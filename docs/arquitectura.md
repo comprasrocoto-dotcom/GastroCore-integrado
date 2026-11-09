@@ -1719,3 +1719,37 @@ Mariluz vuelva a subir el mismo archivo una vez más — ese segundo
 archivo va a actualizar el costo (sin cambio, porque es el mismo) y esta
 vez sí va a completar el Subartículo y crear/asignar la Familia y
 Subfamilia correctas.
+
+
+## Enviar insumos de una sede a otra marca (09/11)
+
+Mariluz pidió poder "amarrar" un artículo ya creado en una sede a otra
+marca — ejemplo: el "PIMENTON X KILO" que ya existe en Malanga, poder
+mandarlo también a Tatequieto sin tener que cargarlo de nuevo a mano.
+
+**Cómo funciona:** desde la pantalla de Insumos, cada fila ahora tiene un
+casillero para seleccionarla. Al marcar uno o más insumos aparece un
+botón "Enviar a otra marca" que lleva a una pantalla nueva donde se
+elige la sede destino y se ve una vista previa antes de confirmar nada.
+
+**Qué pasa exactamente (confirmado por Mariluz):**
+- Es una COPIA, no un vínculo permanente: se crea un insumo NUEVO e
+  independiente en la sede destino, con el mismo artículo, subartículo,
+  unidad, Subfamilia y costo de origen como punto de partida. Si después
+  cambia el costo en una sede, la otra no se entera — cada sede sigue su
+  propio camino de ahí en adelante (compran a proveedores distintos).
+- La Subfamilia se copia con el mismo nombre; si no existe todavía en la
+  sede destino se crea sola, y si tampoco existe la Familia correspondiente
+  se crea también con el mismo nombre (mismo comportamiento que ya tiene
+  la carga de costos desde archivo).
+- Si en la sede destino YA existe un insumo con ese mismo nombre, no se
+  toca nada — se avisa en la vista previa que ese no se va a mandar, para
+  que Mariluz lo revise a mano en vez de arriesgarse a pisar algo.
+- Se puede seleccionar y mandar varios insumos a la vez, no de a uno.
+
+Archivos nuevos: `src/lib/data/enviar-insumos.ts` (arma y aplica el
+plan de envío), `src/app/(protegido)/insumos/enviar/actions.ts`,
+`page.tsx` y `EnviarInsumosForm.tsx` (la pantalla nueva),
+`src/app/(protegido)/insumos/InsumosTabla.tsx` (la tabla de Insumos con
+los casilleros de selección, antes era parte de `page.tsx`). Archivo
+tocado: `src/app/(protegido)/insumos/page.tsx` (usa la tabla nueva).
