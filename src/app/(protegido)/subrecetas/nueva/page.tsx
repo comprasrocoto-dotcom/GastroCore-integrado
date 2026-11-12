@@ -80,6 +80,7 @@ export default async function NuevaSubrecetaPage({
         rendimiento: subrecetaExistente.rendimiento ?? 1,
         unidadRendimiento: subrecetaExistente.unidad_rendimiento_codigo ?? "UND",
         desvioPct: subrecetaExistente.desvio_pct * 100,
+        subfamiliaId: subrecetaExistente.subfamilia_id ?? "",
         lineas: ingredientesExistentes.map((i) => ({
           itemId: (i.tipo_item === "insumo" ? i.insumo_id : i.subreceta_id) ?? "",
           tipoItem: i.tipo_item,
