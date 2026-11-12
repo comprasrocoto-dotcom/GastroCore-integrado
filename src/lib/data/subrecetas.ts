@@ -236,18 +236,26 @@ export async function obtenerSubreceta(id: string) {
   const { data, error } = await supabase
     .from("subrecetas")
     .select(
-      "id, sede_id, nombre, rendimiento, unidad_rendimiento_codigo, merma_pct, desvio_pct, costo_total, costo_unitario, activo, insumo_id, foto_url, creado_en, actualizado_en, sedes(nombre)"
+      "id, sede_id, nombre, rendimiento, unidad_rendimiento_codigo, merma_pct, desvio_pct, costo_total, costo_unitario, activo, insumo_id, foto_url, creado_en, actualizado_en, sedes(nombre), insumos(subfamilia_id)"
     )
     .eq("id", id)
     .single();
 
   if (error || !data) return null;
-  const { sedes, ...resto } = data as typeof data & { sedes: { nombre: string } | null };
+  const { sedes, insumos, ...resto } = data as typeof data & {
+    sedes: { nombre: string } | null;
+    insumos: { subfamilia_id: string | null } | null;
+  };
   return {
     ...resto,
     /** Nombre de la sede — se usa en el encabezado del PDF, igual que
      * `sede_nombre` en `obtenerReceta` (lib/data/recetas.ts). */
     sede_nombre: (sedes as unknown as { nombre: string } | null)?.nombre ?? null,
+    /** Subfamilia actual del insumo maestro vinculado — se usa para
+     * precargar el selector de "Clasificación" en modo edición (ver
+     * SubrecetaForm). El maestro no tiene por qué estar vinculado, así que
+     * puede venir `null`. */
+    subfamilia_id: (insumos as unknown as { subfamilia_id: string | null } | null)?.subfamilia_id ?? null,
     rendimiento: data.rendimiento === null ? null : Number(data.rendimiento),
     merma_pct: Number(data.merma_pct),
     desvio_pct: Number(data.desvio_pct),
@@ -261,9 +269,12 @@ export async function obtenerSubreceta(id: string) {
  * ingredientes — misma lógica que `actualizarRecetaConIngredientes`
  * (lib/data/recetas.ts), usada por la pantalla "Nueva subreceta"
  * (SubrecetaForm) reutilizada en modo edición
- * (`/subrecetas/nueva?edit=ID`), igual que ya hace Recetas. No toca el
- * insumo maestro vinculado (`insumo_id`): una vez creada la subreceta, el
- * maestro no se puede cambiar desde esta pantalla.
+ * (`/subrecetas/nueva?edit=ID`), igual que ya hace Recetas. No toca CUÁL
+ * es el insumo maestro vinculado (`insumo_id`): eso se define una sola vez,
+ * al crear. Lo que sí se puede cambiar desde acá (12/11, pedido de
+ * Mariluz) es la subfamilia de ESE maestro ya vinculado — se guarda en
+ * `insumos.subfamilia_id`, no en la subreceta, porque la subfamilia es un
+ * dato del insumo, no de la subreceta en sí.
  */
 export async function actualizarSubrecetaConIngredientes(datos: {
   id: string;
@@ -272,9 +283,22 @@ export async function actualizarSubrecetaConIngredientes(datos: {
   rendimiento: number | null;
   unidadRendimientoCodigo: string | null;
   desvioPct: number;
+  /** `undefined` = no se tocó el selector (no se manda desde el form de
+   * creación); string u `null` = el valor elegido en modo edición. */
+  subfamiliaId?: string | null;
   lineas: LineaIngredienteEntrada[];
 }): Promise<{ id: string } | { error: string }> {
   const supabase = createClient();
+
+  const { data: subrecetaActual, error: errorActual } = await supabase
+    .from("subrecetas")
+    .select("insumo_id")
+    .eq("id", datos.id)
+    .single();
+
+  if (errorActual || !subrecetaActual) {
+    return { error: errorActual?.message ?? "No se encontró la subreceta." };
+  }
 
   const { error: errorUpdate } = await supabase
     .from("subrecetas")
@@ -288,6 +312,17 @@ export async function actualizarSubrecetaConIngredientes(datos: {
 
   if (errorUpdate) {
     return { error: errorUpdate.message };
+  }
+
+  if (datos.subfamiliaId !== undefined && subrecetaActual.insumo_id) {
+    const { error: errorSubfamilia } = await supabase
+      .from("insumos")
+      .update({ subfamilia_id: datos.subfamiliaId })
+      .eq("id", subrecetaActual.insumo_id as string);
+
+    if (errorSubfamilia) {
+      return { error: errorSubfamilia.message };
+    }
   }
 
   const { error: errorDelete } = await supabase
