@@ -24,6 +24,10 @@ type ValoresIniciales = {
   rendimiento: number;
   unidadRendimiento: string;
   desvioPct: number;
+  /** Subfamilia actual del insumo maestro vinculado, para precargar el
+   * selector de "Clasificación" en modo edición (12/11, pedido de
+   * Mariluz) — `""` si el maestro no tiene subfamilia asignada. */
+  subfamiliaId?: string;
   lineas: Linea[];
 };
 
@@ -81,7 +85,7 @@ export default function SubrecetaForm({
   const [busqueda, setBusqueda] = useState("");
   const [insumoVinculadoId, setInsumoVinculadoId] = useState("");
   const [referencia, setReferencia] = useState(referenciaSugerida);
-  const [subfamiliaId, setSubfamiliaId] = useState("");
+  const [subfamiliaId, setSubfamiliaId] = useState(valoresIniciales?.subfamiliaId ?? "");
 
   // Datos de la preparación
   const [nombre, setNombre] = useState(valoresIniciales?.nombre ?? "");
@@ -206,9 +210,9 @@ export default function SubrecetaForm({
           <input type="hidden" name="modo" value={modo} />
           <input type="hidden" name="insumo_vinculado_id" value={insumoVinculadoId} />
           <input type="hidden" name="referencia" value={referencia} />
-          <input type="hidden" name="subfamilia_id" value={subfamiliaId} />
         </>
       )}
+      <input type="hidden" name="subfamilia_id" value={subfamiliaId} />
       <input type="hidden" name="ingredientes_json" value={ingredientesJson} />
 
       {!esEdicion && (
@@ -391,6 +395,41 @@ export default function SubrecetaForm({
           </label>
         </div>
       </div>
+
+      {esEdicion && (
+        <div className="card p-4">
+          <p
+            className="mb-3 flex items-center gap-2 border-b pb-2 text-[11px] font-bold uppercase tracking-widest text-slate-500"
+            style={{ borderColor: "var(--line)" }}
+          >
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#1E3A5F] text-[10px] font-bold text-white">
+              2
+            </span>
+            🏷️ Clasificación
+          </p>
+          <label className="block max-w-md">
+            <span className="mb-1 block text-xs font-medium text-slate-500">
+              Subfamilia del insumo maestro
+            </span>
+            <select
+              value={subfamiliaId}
+              onChange={(e) => setSubfamiliaId(e.target.value)}
+              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#1E3A5F]"
+            >
+              <option value="">— Sin subfamilia —</option>
+              {subfamilias.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.familia_nombre ? `${s.familia_nombre} · ${s.nombre}` : s.nombre}
+                </option>
+              ))}
+            </select>
+          </label>
+          <p className="mt-2 text-[11px] text-slate-500">
+            Es la subfamilia del insumo &quot;SUB.&quot; que representa a esta subreceta en Insumos —
+            no afecta el costo, solo cómo se clasifica.
+          </p>
+        </div>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
         <section className="card">
