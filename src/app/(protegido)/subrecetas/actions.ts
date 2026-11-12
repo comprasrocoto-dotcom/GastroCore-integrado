@@ -96,8 +96,10 @@ export async function crearSubrecetaCompleta(
  * Actualiza una subreceta existente y reemplaza toda su lista de
  * ingredientes — usa la misma pantalla "Nueva subreceta" (SubrecetaForm)
  * que la creación, igual formato que Recetas (`/subrecetas/nueva?edit=ID`
- * en vez de la pantalla simple que había antes). No toca el insumo
- * maestro vinculado — eso se define una sola vez, al crear.
+ * en vez de la pantalla simple que había antes). No toca CUÁL es el
+ * insumo maestro vinculado — eso se define una sola vez, al crear. Sí
+ * puede cambiar la subfamilia de ese maestro (12/11, pedido de Mariluz;
+ * ver `actualizarSubrecetaConIngredientes`).
  */
 export async function actualizarSubrecetaCompleta(
   _estadoPrevio: EstadoSubreceta,
@@ -122,6 +124,7 @@ export async function actualizarSubrecetaCompleta(
     rendimiento: Number(formData.get("rendimiento") ?? 0) || null,
     unidadRendimientoCodigo: String(formData.get("unidad_rendimiento_codigo") ?? "") || null,
     desvioPct: Number(formData.get("desvio_pct") ?? 0) / 100,
+    subfamiliaId: String(formData.get("subfamilia_id") ?? "") || null,
     lineas,
   });
 
