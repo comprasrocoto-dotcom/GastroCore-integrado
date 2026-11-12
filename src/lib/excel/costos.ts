@@ -79,11 +79,20 @@ export function arreglarMojibake(texto: string): string {
   }
 }
 
-/** Palabra de unidad (como la escribe el archivo) → código real de `unidades_medida`. */
+/**
+ * Palabra de unidad (como la escribe el archivo) → código real de
+ * `unidades_medida`. Incluye singular y plural de cada una (12/11,
+ * detectado con el archivo real de Casa de Nadie: traía "GRAMO" en
+ * singular en 283 de 449 filas, y como el mapa solo tenía "GRAMOS", esas
+ * filas se quedaban sin unidad reconocida y el cambio nunca se aplicaba).
+ */
 const MAPA_UNIDADES: Record<string, string> = {
   GRAMOS: "GR",
+  GRAMO: "GR",
   UNIDADES: "UND",
+  UNIDAD: "UND",
   ONZA: "OZ",
+  ONZAS: "OZ",
   COPA: "COPA",
 };
 
