@@ -37,6 +37,11 @@ import type { FilaArchivoCosto } from "@/lib/excel/costos";
  *   explícita de Mariluz, 12/11) — "reemplazar" no implica "borrar los
  *   que falten", eso es una acción aparte (ver `desactivarInsumosMarca`
  *   más abajo).
+ * - Un insumo que coincide (por Referencia o nombre) pero estaba
+ *   desactivado se reactiva solo al actualizarlo (decisión explícita de
+ *   Mariluz, 12/11) — si el archivo lo trae, tiene que volver a
+ *   aparecer en la app, no quedar actualizado "por dentro" pero
+ *   invisible.
  * - Las filas de subrecetas (código que arranca con "SUB") no se tocan
  *   nunca, igual que en la carga de costos: el costo de una subreceta se
  *   calcula solo a partir de sus ingredientes.
@@ -104,7 +109,7 @@ export async function armarPlanReemplazoSede(
   const [{ data: insumosExistentes }, { data: subfamiliasExistentes }] = await Promise.all([
     supabase
       .from("insumos")
-      .select("id, articulo, coste, unidad_codigo, subarticulo, referencia, subfamilia_id")
+      .select("id, articulo, coste, unidad_codigo, subarticulo, referencia, subfamilia_id, activo")
       .eq("sede_id", sedeId),
     supabase.from("subfamilias").select("id, nombre").eq("sede_id", sedeId).eq("activo", true),
   ]);
@@ -116,6 +121,7 @@ export async function armarPlanReemplazoSede(
     subarticulo: string | null;
     referencia: string | null;
     subfamiliaId: string | null;
+    activo: boolean;
   };
 
   const insumosPorNombre = new Map<string, InsumoExistente[]>();
@@ -128,6 +134,7 @@ export async function armarPlanReemplazoSede(
       subarticulo: i.subarticulo as string | null,
       referencia: i.referencia as string | null,
       subfamiliaId: i.subfamilia_id as string | null,
+      activo: i.activo as boolean,
     };
 
     const claveNombre = normalizarNombre(i.articulo as string);
@@ -169,7 +176,12 @@ export async function armarPlanReemplazoSede(
       const cambiaSubarticulo = Boolean(fila.subarticulo) && fila.subarticulo !== existente.subarticulo;
       const cambiaSubfamilia = Boolean(fila.subfamiliaNombre) && subfamiliaId !== null && subfamiliaId !== existente.subfamiliaId;
       const cambiaReferencia = Boolean(fila.codigo) && fila.codigo !== existente.referencia;
-      const cambia = cambiaCoste || cambiaUnidad || cambiaSubarticulo || cambiaSubfamilia || cambiaReferencia;
+      // Un insumo que estaba desactivado y el archivo lo vuelve a traer
+      // SIEMPRE cuenta como "cambia" — aunque el resto de los datos ya
+      // esté igual, tiene que reactivarse (ver aplicarPlanReemplazoSede).
+      const reactiva = !existente.activo;
+      const cambia =
+        cambiaCoste || cambiaUnidad || cambiaSubarticulo || cambiaSubfamilia || cambiaReferencia || reactiva;
 
       return {
         articulo: fila.articulo,
@@ -328,7 +340,12 @@ async function aplicarPlanReemplazoSede(
         : null);
 
     if (item.accion === "actualizar" && item.insumoId) {
-      const cambios: Record<string, string | number> = { coste: item.costeArchivo };
+      // `activo: true` siempre — si el archivo trae esta fila, el insumo
+      // tiene que quedar visible en la app (12/11, pedido de Mariluz: un
+      // insumo que había quedado desactivado y que el archivo nuevo
+      // vuelve a traer se reactiva solo, en vez de quedar actualizado
+      // "por dentro" pero invisible).
+      const cambios: Record<string, string | number | boolean> = { coste: item.costeArchivo, activo: true };
       if (item.unidadCodigo) cambios.unidad_codigo = item.unidadCodigo;
       if (item.subarticulo) cambios.subarticulo = item.subarticulo;
       if (item.codigoArchivo) cambios.referencia = item.codigoArchivo;
