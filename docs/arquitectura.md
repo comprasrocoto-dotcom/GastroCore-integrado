@@ -1826,3 +1826,44 @@ Archivos tocados: `src/app/(protegido)/recetario/RecetarioExplorador.tsx`
 (el rediseño completo de la pantalla) y
 `src/app/(protegido)/recetario/page.tsx` (le pasa a la pantalla el nombre
 de la marca/sede y el área activa).
+
+## Reemplazar / borrar insumos por marca (12/11)
+
+Mariluz pidió poder cargar un archivo nuevo que reemplace la base de
+insumos de una marca entera, o directamente vaciarla, sin tener que
+pedírmelo cada vez — "desde un panel de Configuración".
+
+Antes de programar nada se aclararon tres puntos con ella:
+
+- Para los insumos que ya existen (coinciden por nombre con el
+  archivo), ahora se reemplaza TODO lo que traiga el archivo (costo,
+  unidad, subfamilia, subartículo, referencia) — no solo el costo, como
+  hacía la carga que ya existía ("Cargar costos desde archivo", en
+  Insumos). Si una celda del archivo viene vacía, esa columna puntual no
+  se toca.
+- Un insumo que el archivo no menciona para nada no se toca — "reemplazar"
+  no borra los que falten en el archivo.
+- Como algunas marcas tienen varias sedes (ej. San Agustín, con 4), y
+  Mariluz tiene un archivo separado por cada sede, el panel pide un
+  archivo por sede dentro de la misma marca — se puede subir uno, varios
+  o todos juntos.
+
+También se confirmó algo importante antes de construir el botón de
+"Borrar": la base de datos no permite borrar de verdad un insumo que esté
+usado en alguna receta o sea la base de una subreceta (lo impide a
+propósito, para no romper el costeo de nada existente). Por eso "Borrar
+insumos de una marca" en realidad los DESACTIVA — igual que el campo
+"Activo" que ya se usa en toda la app: dejan de aparecer para elegir en
+recetas nuevas, pero las recetas y subrecetas que ya los usaban, y su
+historial de precios, no se tocan para nada.
+
+Como esto afecta de una sola vez a todas las sedes de una marca, la
+pantalla quedó reservada al Admin multi-marca (igual que "Marcas y
+sedes"), y el botón de borrar exige escribir el nombre exacto de la marca
+para habilitarse — no alcanza con un simple aceptar/cancelar, porque
+puede afectar a miles de insumos de una vez.
+
+Pantalla nueva: Configuración → "📦 Reemplazar / borrar insumos"
+(`/configuracion/insumos`). Archivos: `src/lib/data/reemplazar-insumos.ts`
+(las reglas y el cruce con la base), `src/app/(protegido)/configuracion/insumos/`
+(la pantalla y los botones).
