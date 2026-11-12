@@ -1867,3 +1867,25 @@ Pantalla nueva: Configuración → "📦 Reemplazar / borrar insumos"
 (`/configuracion/insumos`). Archivos: `src/lib/data/reemplazar-insumos.ts`
 (las reglas y el cruce con la base), `src/app/(protegido)/configuracion/insumos/`
 (la pantalla y los botones).
+
+## Cambiar la subfamilia al editar una subreceta (12/11)
+
+Mariluz pidió, mirando la pantalla "Editar subreceta", poder cambiar ahí
+mismo la clasificación de la preparación. Antes solo se podía elegir una
+vez, al crearla — después quedaba fija para siempre, sin forma de
+corregirla desde esa pantalla.
+
+Aclaración técnica importante: una subreceta en sí no tiene "familia"
+propia. Cada subreceta está representada por un insumo "SUB." en Insumos
+(el "maestro"), y es ESE insumo el que tiene la subfamilia — por eso el
+selector nuevo dice "Subfamilia del insumo maestro". Cambiarla no afecta
+el costo de nada, solo cómo se clasifica.
+
+También se le mostró dónde ya existía algo parecido: en Recetas (los
+platos de venta), la pantalla de edición ya tenía desde antes un selector
+de "Familia" que se puede cambiar libremente — eso no cambió, sigue igual.
+
+Pantalla: `/subrecetas/nueva?edit=ID` (la misma de "Nueva subreceta",
+reutilizada para editar), card nueva "🏷️ Clasificación", visible solo en
+modo edición. Archivos tocados: `lib/data/subrecetas.ts` (trae y guarda la
+subfamilia del maestro), `subrecetas/actions.ts` y `subrecetas/SubrecetaForm.tsx`.
