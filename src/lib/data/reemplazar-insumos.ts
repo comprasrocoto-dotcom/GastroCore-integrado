@@ -11,10 +11,22 @@ import type { FilaArchivoCosto } from "@/lib/excel/costos";
  * el archivo manda sobre TODOS los campos que trae — no solo el precio.
  *
  * Reglas de negocio confirmadas por Mariluz antes de programar esto:
- * - Se cruza por nombre exacto de artículo (normalizado), igual que la
- *   carga de costos — misma razón: casi ningún insumo tiene "Referencia"
- *   cargada hoy.
- * - Para un insumo que YA existe (coincide por nombre): el archivo
+ * - Se cruza PRIMERO por Referencia (el código de la columna "Referencia"
+ *   del archivo) cuando el insumo existente ya tiene una cargada, y SOLO
+ *   si no hay coincidencia ahí, se cae de respaldo al nombre exacto de
+ *   artículo (normalizado) — igual que antes. (Cambiado 12/11, pedido de
+ *   Mariluz: al cruzar solo por nombre, cada vez que renombraba un
+ *   insumo en el archivo nuevo el sistema se lo duplicaba en vez de
+ *   actualizarlo, porque para el nombre ya no era "el mismo". Un insumo
+ *   que matchea por Referencia conserva su identidad aunque el nombre Y
+ *   la unidad hayan cambiado en el archivo.)
+ * - Si un insumo matchea por nombre pero todavía no tenía Referencia
+ *   cargada, y el archivo sí trae un código para esa fila, ese código se
+ *   guarda igual (ver más abajo, "el archivo reemplaza... referencia") —
+ *   así la próxima carga ya lo puede cruzar por código aunque vuelva a
+ *   cambiarle el nombre.
+ * - Para un insumo que YA existe (coincide por Referencia o, a falta de
+ *   eso, por nombre): el archivo
  *   reemplaza costo, unidad, subartículo, subfamilia y referencia — TODO
  *   lo que traiga (decisión explícita de Mariluz, 12/11: "todo lo que
  *   traiga el archivo"). Si una columna de una fila viene vacía, esa
@@ -43,6 +55,10 @@ import type { FilaArchivoCosto } from "@/lib/excel/costos";
 
 function normalizarNombre(texto: string): string {
   return texto.trim().toUpperCase().replace(/\s+/g, " ");
+}
+
+function normalizarReferencia(texto: string): string {
+  return texto.trim().toUpperCase();
 }
 
 const EPSILON_COSTE = 0.005;
@@ -93,29 +109,39 @@ export async function armarPlanReemplazoSede(
     supabase.from("subfamilias").select("id, nombre").eq("sede_id", sedeId).eq("activo", true),
   ]);
 
-  const insumosPorNombre = new Map<
-    string,
-    {
-      id: string;
-      coste: number;
-      unidadCodigo: string | null;
-      subarticulo: string | null;
-      referencia: string | null;
-      subfamiliaId: string | null;
-    }[]
-  >();
+  type InsumoExistente = {
+    id: string;
+    coste: number;
+    unidadCodigo: string | null;
+    subarticulo: string | null;
+    referencia: string | null;
+    subfamiliaId: string | null;
+  };
+
+  const insumosPorNombre = new Map<string, InsumoExistente[]>();
+  const insumosPorReferencia = new Map<string, InsumoExistente[]>();
   for (const i of insumosExistentes ?? []) {
-    const clave = normalizarNombre(i.articulo as string);
-    const lista = insumosPorNombre.get(clave) ?? [];
-    lista.push({
+    const entrada: InsumoExistente = {
       id: i.id as string,
       coste: Number(i.coste),
       unidadCodigo: i.unidad_codigo as string | null,
       subarticulo: i.subarticulo as string | null,
       referencia: i.referencia as string | null,
       subfamiliaId: i.subfamilia_id as string | null,
-    });
-    insumosPorNombre.set(clave, lista);
+    };
+
+    const claveNombre = normalizarNombre(i.articulo as string);
+    const listaNombre = insumosPorNombre.get(claveNombre) ?? [];
+    listaNombre.push(entrada);
+    insumosPorNombre.set(claveNombre, listaNombre);
+
+    const referenciaCruda = i.referencia as string | null;
+    if (referenciaCruda && referenciaCruda.trim()) {
+      const claveReferencia = normalizarReferencia(referenciaCruda);
+      const listaReferencia = insumosPorReferencia.get(claveReferencia) ?? [];
+      listaReferencia.push(entrada);
+      insumosPorReferencia.set(claveReferencia, listaReferencia);
+    }
   }
 
   const subfamiliaIdPorNombre = new Map<string, string>();
@@ -124,8 +150,14 @@ export async function armarPlanReemplazoSede(
   }
 
   const items: ItemPlanReemplazo[] = filasInsumo.map((fila) => {
-    const clave = normalizarNombre(fila.articulo);
-    const coincidencias = insumosPorNombre.get(clave) ?? [];
+    // Cruce: primero por Referencia (si el archivo trae un código Y ese
+    // código ya está cargado en algún insumo existente), y solo si ahí
+    // no hay coincidencia, de respaldo por nombre — ver nota arriba.
+    const claveReferencia = fila.codigo && fila.codigo.trim() ? normalizarReferencia(fila.codigo) : null;
+    const coincidenciasPorReferencia = claveReferencia ? insumosPorReferencia.get(claveReferencia) ?? [] : [];
+    const claveNombre = normalizarNombre(fila.articulo);
+    const coincidencias =
+      coincidenciasPorReferencia.length > 0 ? coincidenciasPorReferencia : insumosPorNombre.get(claveNombre) ?? [];
     const subfamiliaId = fila.subfamiliaNombre
       ? subfamiliaIdPorNombre.get(normalizarNombre(fila.subfamiliaNombre)) ?? null
       : null;
@@ -168,8 +200,9 @@ export async function armarPlanReemplazoSede(
       };
     }
 
-    // Más de un insumo existente con el mismo nombre (duplicado en la
-    // base) — no se toca automáticamente, queda para resolver a mano.
+    // Más de un insumo existente con la misma Referencia o el mismo
+    // nombre (duplicado en la base) — no se toca automáticamente, queda
+    // para resolver a mano.
     return {
       articulo: fila.articulo,
       codigoArchivo: fila.codigo,
