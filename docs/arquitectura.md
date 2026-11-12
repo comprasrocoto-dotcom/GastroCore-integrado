@@ -1889,3 +1889,41 @@ Pantalla: `/subrecetas/nueva?edit=ID` (la misma de "Nueva subreceta",
 reutilizada para editar), card nueva "🏷️ Clasificación", visible solo en
 modo edición. Archivos tocados: `lib/data/subrecetas.ts` (trae y guarda la
 subfamilia del maestro), `subrecetas/actions.ts` y `subrecetas/SubrecetaForm.tsx`.
+
+## Cruzar insumos por Referencia (código) al reemplazar, no solo por nombre (12/11)
+
+Mariluz reportó que, al subir un archivo de costos nuevo para actualizar
+una marca entera (pantalla "Reemplazar / borrar insumos"), muchos insumos
+no se actualizaban: se le creaban duplicados en vez de reemplazar los que
+ya existían.
+
+La causa: el sistema reconocía "es el mismo insumo" comparando únicamente
+el nombre del artículo. Mariluz había renombrado muchas referencias en el
+archivo nuevo (y también les cambió la unidad de medida) — para el
+sistema, un nombre distinto era, sin más, un insumo distinto, así que lo
+creaba de cero en lugar de actualizar el que ya tenía cargado.
+
+Se revisó el archivo real que Mariluz subió (463 artículos de "Casa de
+Nadie") contra la base: 453 de esos 463 (98%) ya traían un código de
+Referencia que coincidía con uno de los insumos existentes, y de esos, 37
+tenían el nombre cambiado — eran exactamente los que se estaban
+duplicando.
+
+Cambio aplicado: ahora el cruce se hace PRIMERO por Referencia (el código
+de esa columna del archivo), si el insumo existente ya tiene una cargada
+— así se lo reconoce aunque le hayan cambiado el nombre y la unidad. Solo
+si no hay coincidencia por Referencia, se usa el nombre como respaldo
+(el comportamiento de antes), para los insumos que todavía no tienen un
+código cargado. Cuando un insumo se reconoce por nombre y el archivo trae
+un código que todavía no tenía guardado, ese código se guarda de una vez
+— así la próxima carga ya lo puede reconocer por Referencia aunque vuelva
+a cambiarle el nombre.
+
+Los insumos que ni por Referencia ni por nombre coinciden con nada siguen
+tratándose como artículos nuevos (se crean), y los casos raros donde dos
+insumos existentes comparten la misma Referencia o el mismo nombre
+(duplicados en la base) se siguen dejando sin tocar, para resolverlos a
+mano — igual que antes.
+
+Archivo tocado: `src/lib/data/reemplazar-insumos.ts` (función
+`armarPlanReemplazoSede`). No se tocó la pantalla ni la carga del archivo.
