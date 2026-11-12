@@ -1927,3 +1927,40 @@ mano — igual que antes.
 
 Archivo tocado: `src/lib/data/reemplazar-insumos.ts` (función
 `armarPlanReemplazoSede`). No se tocó la pantalla ni la carga del archivo.
+
+## Por qué las unidades no cambiaban al Reemplazar, y por qué quedaba todo "invisible" (12/11)
+
+Después del cambio anterior (cruzar por Referencia), Mariluz probó subir
+de nuevo el archivo de Casa de Nadie y reportó que las unidades de
+medida seguían sin cambiar. Se encontraron dos problemas distintos,
+los dos arreglados:
+
+**1) El traductor de palabras de unidad era demasiado estricto.** La
+columna que trae la unidad (la que dice "GRAMO", "ONZA", "UNIDADES",
+etc.) se traduce a un código interno (GR, OZ, UND...) con una lista muy
+chica de palabras exactas. Esa lista tenía "GRAMOS" en plural, pero el
+archivo real de Casa de Nadie dice "GRAMO" en singular en 283 de las
+449 filas de insumos — el 63%. Como "GRAMO" no estaba en la lista, esas
+filas se quedaban sin unidad reconocida y el cambio nunca se aplicaba.
+Se agregó GRAMO, UNIDAD y ONZAS como sinónimos de GRAMOS, UNIDADES y
+ONZA, para que tanto singular como plural funcionen.
+
+**2) Un insumo que estaba desactivado no se reactivaba al actualizarlo.**
+Al revisar la base se encontró que, de los 780 insumos de Casa de Nadie,
+779 ya estaban desactivados (quedó solo 1 activo) — Mariluz ya había
+usado el botón "Borrar insumos" antes. El problema: la pantalla
+"Reemplazar" busca coincidencias entre TODOS los insumos, activos e
+inactivos, pero cuando actualizaba uno que estaba desactivado, lo dejaba
+actualizado "por dentro" sin volver a activarlo — por eso, aunque el
+archivo sí tuviera los datos correctos, la lista seguía viéndose vacía.
+Ahora, un insumo que coincide con una fila del archivo se reactiva
+automáticamente al actualizarse.
+
+Mientras se investigaba esto se desactivó manualmente el último insumo
+que había quedado activo en Casa de Nadie (a pedido de Mariluz, para
+arrancar la próxima carga con la lista en limpio) — queda en 0 insumos
+activos, listo para que vuelva a subir el archivo.
+
+Archivos tocados: `src/lib/excel/costos.ts` (el diccionario de palabras
+de unidad) y `src/lib/data/reemplazar-insumos.ts` (la reactivación al
+actualizar). No se tocó la pantalla.
