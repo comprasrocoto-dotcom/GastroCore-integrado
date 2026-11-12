@@ -351,6 +351,17 @@ export default async function ConfiguracionPage({
                 Crear, renombrar, activar/desactivar o eliminar marcas y sedes.
               </span>
             </Link>
+            <Link
+              href="/configuracion/insumos"
+              className="card flex flex-col gap-1 p-4"
+              style={{ minWidth: 220 }}
+            >
+              <span className="text-sm font-semibold">📦 Reemplazar / borrar insumos</span>
+              <span className="text-xs" style={{ color: "var(--muted)" }}>
+                Subir un archivo nuevo que reemplace la base de insumos de una marca entera, o
+                desactivarlos todos de una vez.
+              </span>
+            </Link>
           </div>
 
           <div className="card flex flex-col gap-3 p-4" style={{ maxWidth: 560 }}>
