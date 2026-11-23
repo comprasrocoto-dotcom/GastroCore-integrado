@@ -13,6 +13,7 @@ const ETIQUETA_MODULO: Record<Modulo, string> = {
   recetas: "Recetas",
   familias: "Familias",
   configuracion: "Configuración",
+  manual: "Manual",
   recetario: "Recetario",
 };
 
@@ -260,4 +261,4 @@ export default function CrearUsuarioForm({
       <BotonCrear />
     </form>
   );
-}
+          }
