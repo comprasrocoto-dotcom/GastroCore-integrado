@@ -107,6 +107,17 @@ export function IconoUsuarios(props: IconoProps) {
   );
 }
 
+/** Manual — signo de pregunta en un círculo (ayuda/guía de uso). */
+export function IconoManual(props: IconoProps) {
+  return (
+    <svg {...base} {...props}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M9.3 9.3a2.7 2.7 0 1 1 3.8 2.5c-.8.4-1.1.9-1.1 1.7" />
+      <path d="M12 17v.1" />
+    </svg>
+  );
+}
+
 /** Salir — flecha saliendo de una puerta (cerrar sesión). */
 export function IconoSalir(props: IconoProps) {
   return (
