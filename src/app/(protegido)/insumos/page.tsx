@@ -1,15 +1,31 @@
 import Link from "next/link";
 import { getUsuarioActual, tieneModulo } from "@/lib/auth/usuario-actual";
 import { getSedesVisibles, resolverSedeActiva } from "@/lib/data/sedes";
-import { listarInsumos, obtenerUltimasVariaciones } from "@/lib/data/insumos";
+import {
+  listarInsumos,
+  listarSubfamilias,
+  listarCentrosCosto,
+  obtenerUltimasVariaciones,
+} from "@/lib/data/insumos";
+import { listarInsumosSubSinVincular } from "@/lib/data/subrecetas";
 import { obtenerConfiguracionCosteo } from "@/lib/data/configuracion";
 import { eliminarInsumo } from "./actions";
 import InsumosTabla, { type FilaInsumoVista } from "./InsumosTabla";
+import FiltrosInsumos from "./FiltrosInsumos";
 
 export default async function InsumosPage({
   searchParams,
 }: {
-  searchParams: { sede?: string; q?: string; pagina?: string; error?: string; enviado?: string; creados?: string };
+  searchParams: {
+    sede?: string;
+    q?: string;
+    subfamilia?: string;
+    centrocosto?: string;
+    pagina?: string;
+    error?: string;
+    enviado?: string;
+    creados?: string;
+  };
 }) {
   const usuario = await getUsuarioActual();
   if (!usuario) return null;
@@ -30,15 +46,29 @@ export default async function InsumosPage({
   }
 
   const pagina = Number(searchParams.pagina ?? "1") || 1;
-  const [{ insumos, total, totalPaginas }, config, variaciones] = await Promise.all([
-    listarInsumos(sedeActiva.id, { q: searchParams.q, pagina }),
-    obtenerConfiguracionCosteo(sedeActiva.id),
-    obtenerUltimasVariaciones(sedeActiva.id),
-  ]);
+  const filtros = { q: searchParams.q, subfamiliaId: searchParams.subfamilia, centroCosto: searchParams.centrocosto };
+  const [{ insumos, total, totalPaginas }, config, variaciones, subfamilias, centrosCosto, insumosSubSinVincular] =
+    await Promise.all([
+      listarInsumos(sedeActiva.id, { ...filtros, pagina }),
+      obtenerConfiguracionCosteo(sedeActiva.id),
+      obtenerUltimasVariaciones(sedeActiva.id),
+      listarSubfamilias(sedeActiva.id),
+      listarCentrosCosto(sedeActiva.id),
+      listarInsumosSubSinVincular(sedeActiva.id),
+    ]);
 
   const umbralAlerta = config.alertaInsumoPct !== null ? config.alertaInsumoPct * 100 : null;
+  // Array (no Set) porque esto cruza a un componente de cliente
+  // (InsumosTabla) como prop, y un Set no se puede serializar ahí.
+  const idsSubSinVincular = insumosSubSinVincular.map((i) => i.id);
 
-  const qParam = searchParams.q ? `&q=${encodeURIComponent(searchParams.q)}` : "";
+  const filtrosParam = [
+    searchParams.q ? `&q=${encodeURIComponent(searchParams.q)}` : "",
+    searchParams.subfamilia ? `&subfamilia=${encodeURIComponent(searchParams.subfamilia)}` : "",
+    searchParams.centrocosto ? `&centrocosto=${encodeURIComponent(searchParams.centrocosto)}` : "",
+  ].join("");
+  const qParam = filtrosParam;
+  const urlDescarga = `/insumos/exportar/descargar?sede=${sedeActiva.id}${filtrosParam}`;
 
   return (
     <div className="flex flex-col gap-4">
@@ -54,6 +84,9 @@ export default async function InsumosPage({
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <a href={urlDescarga} className="btn-secondary">
+            Descargar Excel
+          </a>
           <Link href={`/insumos/importar?sede=${sedeActiva.id}`} className="btn-secondary">
             Cargar costos desde archivo
           </Link>
@@ -81,19 +114,25 @@ export default async function InsumosPage({
         </div>
       )}
 
-      <form className="flex gap-2">
-        <input type="hidden" name="sede" value={sedeActiva.id} />
-        <input
-          type="search"
-          name="q"
-          defaultValue={searchParams.q ?? ""}
-          placeholder="Buscar por artículo, subartículo o referencia…"
-          className="w-full max-w-md rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#1E3A5F]"
-        />
-        <button type="submit" className="btn-secondary">
-          Buscar
-        </button>
-      </form>
+      <div className="flex flex-wrap items-center gap-2">
+        <form className="flex gap-2">
+          <input type="hidden" name="sede" value={sedeActiva.id} />
+          {searchParams.subfamilia && <input type="hidden" name="subfamilia" value={searchParams.subfamilia} />}
+          {searchParams.centrocosto && <input type="hidden" name="centrocosto" value={searchParams.centrocosto} />}
+          <input
+            type="search"
+            name="q"
+            defaultValue={searchParams.q ?? ""}
+            placeholder="Buscar por artículo, subartículo o referencia…"
+            className="w-full max-w-md rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#1E3A5F]"
+          />
+          <button type="submit" className="btn-secondary">
+            Buscar
+          </button>
+        </form>
+
+        <FiltrosInsumos subfamilias={subfamilias} centrosCosto={centrosCosto} />
+      </div>
 
       <InsumosTabla
         insumos={insumos.map((i): FilaInsumoVista => {
@@ -106,6 +145,7 @@ export default async function InsumosPage({
         })}
         sedeActivaId={sedeActiva.id}
         eliminarInsumo={eliminarInsumo}
+        idsSubSinVincular={idsSubSinVincular}
       />
 
       {totalPaginas > 1 && (
