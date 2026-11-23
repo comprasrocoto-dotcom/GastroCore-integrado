@@ -1964,6 +1964,7 @@ activos, listo para que vuelva a subir el archivo.
 Archivos tocados: `src/lib/excel/costos.ts` (el diccionario de palabras
 de unidad) y `src/lib/data/reemplazar-insumos.ts` (la reactivación al
 actualizar). No se tocó la pantalla.
+
 ## Excel del recetario con la estructura del GastroCore viejo, y la pantalla "Manual" (23/11)
 
 Mariluz pidió dos cosas en la misma tarea: que el Excel que se descarga
