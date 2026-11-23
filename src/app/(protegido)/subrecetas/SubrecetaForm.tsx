@@ -62,6 +62,7 @@ export default function SubrecetaForm({
   unidades,
   subrecetaId,
   valoresIniciales,
+  insumoPreseleccionadoId,
 }: {
   sedeId: string;
   insumosSubSinVincular: InsumoSubSinVincular[];
@@ -71,6 +72,12 @@ export default function SubrecetaForm({
   unidades: { codigo: string; nombre: string }[];
   subrecetaId?: string;
   valoresIniciales?: ValoresIniciales;
+  /** Id de un insumo "SUB." a enlazar de entrada (23/11) — llega del botón
+   * "Crear subreceta" del listado de Insumos, ya validado en la página
+   * (ver /subrecetas/nueva) contra la lista de "sin vincular" de la sede.
+   * Precarga el enlace Y el nombre/unidad, para no hacer repetir esos
+   * datos que ya existen en el insumo. */
+  insumoPreseleccionadoId?: string;
 }) {
   const esEdicion = Boolean(subrecetaId);
   const accion = esEdicion ? actualizarSubrecetaCompleta : crearSubrecetaCompleta;
@@ -78,20 +85,22 @@ export default function SubrecetaForm({
     error: null,
   });
 
+  const insumoPreseleccionado = insumosSubSinVincular.find((i) => i.id === insumoPreseleccionadoId) ?? null;
+
   // Card "Maestro en Insumos" — solo aplica al crear: o se enlaza uno
   // "SUB." existente, o se completan los datos para crear uno nuevo
   // (mutuamente excluyentes). Una vez creada la subreceta, el maestro
   // vinculado no se puede cambiar desde esta pantalla.
   const [busqueda, setBusqueda] = useState("");
-  const [insumoVinculadoId, setInsumoVinculadoId] = useState("");
+  const [insumoVinculadoId, setInsumoVinculadoId] = useState(insumoPreseleccionadoId ?? "");
   const [referencia, setReferencia] = useState(referenciaSugerida);
   const [subfamiliaId, setSubfamiliaId] = useState(valoresIniciales?.subfamiliaId ?? "");
 
   // Datos de la preparación
-  const [nombre, setNombre] = useState(valoresIniciales?.nombre ?? "");
+  const [nombre, setNombre] = useState(valoresIniciales?.nombre ?? insumoPreseleccionado?.articulo ?? "");
   const [rendimiento, setRendimiento] = useState(valoresIniciales?.rendimiento ?? 1);
   const [unidadRendimiento, setUnidadRendimiento] = useState(
-    valoresIniciales?.unidadRendimiento ?? unidades[0]?.codigo ?? ""
+    valoresIniciales?.unidadRendimiento ?? insumoPreseleccionado?.unidad_codigo ?? unidades[0]?.codigo ?? ""
   );
   const [desvioPct, setDesvioPct] = useState(valoresIniciales?.desvioPct ?? 0);
 
