@@ -18,7 +18,7 @@ import SubrecetaForm from "../SubrecetaForm";
 export default async function NuevaSubrecetaPage({
   searchParams,
 }: {
-  searchParams: { sede?: string; edit?: string };
+  searchParams: { sede?: string; edit?: string; vincular?: string };
 }) {
   const usuario = await getUsuarioActual();
   if (!usuario) return null;
@@ -74,6 +74,15 @@ export default async function NuevaSubrecetaPage({
     })),
   ];
 
+  // Botón "Crear subreceta" de Insumos (23/11): llega con ?vincular=<id> de
+  // un insumo "SUB." ya elegido — se valida que de verdad esté en la lista
+  // de "sin vincular" de esta sede antes de precargarlo, para no confiar
+  // ciegamente en un id armado a mano en la URL.
+  const insumoPreseleccionadoId =
+    !subrecetaExistente && searchParams.vincular && insumosSubSinVincular.some((i) => i.id === searchParams.vincular)
+      ? searchParams.vincular
+      : undefined;
+
   const valoresIniciales = subrecetaExistente
     ? {
         nombre: subrecetaExistente.nombre,
@@ -116,6 +125,7 @@ export default async function NuevaSubrecetaPage({
         unidades={unidades}
         subrecetaId={subrecetaExistente?.id}
         valoresIniciales={valoresIniciales}
+        insumoPreseleccionadoId={insumoPreseleccionadoId}
       />
     </div>
   );
