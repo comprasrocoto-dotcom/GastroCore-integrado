@@ -2,17 +2,22 @@ import { NextResponse } from "next/server";
 import { listarRecetas } from "@/lib/data/recetas";
 import { listarSubrecetas } from "@/lib/data/subrecetas";
 import { listarIngredientesDeReceta, listarIngredientesDeSubreceta } from "@/lib/data/ingredientes";
-import { obtenerFichaPorReceta } from "@/lib/data/fichas";
+import { listarUnidades } from "@/lib/data/insumos";
 import { getSedesVisibles } from "@/lib/data/sedes";
 import { generarExcelRecetario } from "@/lib/excel/recetario";
 
 /**
  * Descarga el recetario completo de una sede en un solo Excel (recetas +
- * subrecetas, con el detalle de sus ingredientes y costos, y — si se pide
- * — las fichas técnicas de las recetas). Mismos datos y mismas fórmulas
- * que ya se ven en `/recetas` y `/subrecetas`, no inventa ni recalcula
- * nada. Usa el cliente de Supabase con la sesión del usuario, así que
- * respeta la misma RLS por sede de siempre.
+ * subrecetas, con el detalle de sus ingredientes y costos). Mismos datos y
+ * mismas fórmulas que ya se ven en `/recetas` y `/subrecetas`, no inventa
+ * ni recalcula nada. Usa el cliente de Supabase con la sesión del usuario,
+ * así que respeta la misma RLS por sede de siempre.
+ *
+ * Estructura calcada del GastroCore viejo (a pedido de Mariluz, 23/11):
+ * Portada + un bloque por receta/subreceta en vez de tablas planas. El
+ * checkbox "fichas técnicas" ya no agrega columnas acá (el Excel viejo
+ * tampoco las tenía ahí) — solo cambia el texto de la Portada; la ficha de
+ * cada receta se sigue descargando en PDF aparte, desde su propio detalle.
  */
 export async function GET(req: Request) {
   const url = new URL(req.url);
@@ -69,18 +74,11 @@ export async function GET(req: Request) {
     }))
   );
 
-  let fichas: { recetaNombre: string; preparacion: string | null; emplatado: string | null; notas: string | null; tiempo_min: number | null; gramaje_porcion: number | null }[] | null = null;
-  if (incluirFichas) {
-    const fichasCrudas = await Promise.all(recetas.map((r) => obtenerFichaPorReceta(r.id)));
-    fichas = recetas.map((r, idx) => ({
-      recetaNombre: r.nombre,
-      preparacion: fichasCrudas[idx]?.preparacion ?? null,
-      emplatado: fichasCrudas[idx]?.emplatado ?? null,
-      notas: fichasCrudas[idx]?.notas ?? null,
-      tiempo_min: fichasCrudas[idx]?.tiempo_min ?? null,
-      gramaje_porcion: fichasCrudas[idx]?.gramaje_porcion ?? null,
-    }));
-  }
+  const unidades = await listarUnidades();
+  const unidadesPorCodigo: Record<string, string> = {};
+  unidades.forEach((u) => {
+    unidadesPorCodigo[u.codigo] = u.nombre;
+  });
 
   const buffer = await generarExcelRecetario({
     sedeNombre: sede.nombre,
@@ -88,15 +86,22 @@ export async function GET(req: Request) {
     subrecetas,
     ingredientesRecetas,
     ingredientesSubrecetas,
-    fichas,
+    unidadesPorCodigo,
+    incluyeFichas: incluirFichas,
+    soloActivas,
   });
 
-  const nombreArchivo = `recetario-${sede.nombre.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.xlsx`;
+  const fecha = new Date().toISOString().slice(0, 10);
+  const nombreArchivo = `Gastro Central - Recetario completo - ${sede.nombre} - ${fecha}.xlsx`.replace(/[\\/:*?"<>|]/g, "-");
+  // El nombre de la sede puede traer tildes/ñ: se manda un nombre ASCII de
+  // respaldo (`filename`) y el real codificado (`filename*`, RFC 5987) para
+  // que los navegadores que sí lo soportan muestren el nombre completo.
+  const nombreAscii = nombreArchivo.normalize("NFKD").replace(/[̀-ͯ]/g, "").replace(/[^\x20-\x7E]/g, "_");
 
   return new NextResponse(Buffer.from(buffer), {
     headers: {
       "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "Content-Disposition": `attachment; filename="${nombreArchivo}"`,
+      "Content-Disposition": `attachment; filename="${nombreAscii}"; filename*=UTF-8''${encodeURIComponent(nombreArchivo)}`,
     },
   });
 }
