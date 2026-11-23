@@ -1964,3 +1964,57 @@ activos, listo para que vuelva a subir el archivo.
 Archivos tocados: `src/lib/excel/costos.ts` (el diccionario de palabras
 de unidad) y `src/lib/data/reemplazar-insumos.ts` (la reactivación al
 actualizar). No se tocó la pantalla.
+## Excel del recetario con la estructura del GastroCore viejo, y la pantalla "Manual" (23/11)
+
+Mariluz pidió dos cosas en la misma tarea: que el Excel que se descarga
+desde "Recetas → Exportar" tenga exactamente la misma forma que el del
+GastroCore viejo (mandó una captura de referencia), y que el link
+"Manual" del menú —que hasta ahora no llevaba a ningún lado— tenga por
+fin su propia pantalla.
+
+**Excel del recetario.** Antes, el archivo tenía 4 hojas con tablas
+planas (una fila por receta, otra por subreceta, y dos más con el
+detalle de ingredientes sueltos). Ahora tiene 3 hojas, calcadas del
+sistema viejo:
+
+- **Portada**: nombre de la sede, una línea de subtítulo y cuándo se
+  generó el archivo.
+- **Recetas**: un bloque por cada receta (con fondo azul en el título),
+  seguido de un renglón de resumen (rendimiento, costo del plato, precio
+  real y Food Cost) y el detalle de sus ingredientes con cantidad,
+  unidad, % de merma, costo unitario y costo de línea. Después de cada
+  bloque quedan dos filas en blanco antes del siguiente.
+- **Subrecetas**: lo mismo, un bloque por subreceta (rendimiento, costo
+  total y costo por unidad en el resumen).
+
+Los números y las fórmulas son exactamente los mismos que ya se ven en
+pantalla en `/recetas` y `/subrecetas` — este cambio solo reordena cómo
+se acomodan en el Excel, no recalcula nada nuevo. Las fichas técnicas ya
+no se agregan como columnas extra adentro de este archivo (el Excel
+viejo tampoco las tenía ahí); se siguen descargando en PDF aparte, desde
+el detalle de cada receta, como ya existía. El archivo descargado ahora
+se llama "Gastro Central - Recetario completo - {sede} - {fecha}.xlsx"
+(antes decía "GastroCore"; Mariluz confirmó el nombre nuevo).
+
+Archivo reescrito: `src/lib/excel/recetario.ts`. También se ajustó
+`src/app/(protegido)/recetas/exportar/descargar/route.ts` (ya no junta
+las fichas técnicas para el Excel, y arma el nombre de archivo nuevo).
+
+**Pantalla "Manual".** El link "Manual" del menú lateral ahora lleva a
+`/manual`, una pantalla propia con una explicación corta de qué hace
+cada módulo del sistema (Insumos, Subrecetas, Recetas, Familias,
+Configuración, Recetario, y —para el Admin multi-marca— Marcas y
+Usuarios), pensada como ayuda rápida para alguien que recién empieza a
+usar Gastro Central. El contenido lo escribí a partir de cómo funciona
+hoy cada pantalla (Mariluz pidió "hacerlo yo, explicando cada módulo");
+se puede ajustar o ampliar después si quiere agregar algo más
+específico. Como cualquier otra pantalla, "Manual" entró a la lista de
+módulos que se pueden restringir por usuario desde "Usuarios" — por
+default todos los usuarios nuevos y existentes sin restricciones la ven,
+igual que al resto.
+
+Archivos nuevos/tocados: `src/app/(protegido)/manual/page.tsx` (nuevo),
+`src/components/IconosNav.tsx` (ícono nuevo), `src/components/HeaderProtegido.tsx`
+(entrada nueva en el menú), `src/lib/auth/modulos.ts`, y las pantallas
+de "Roles y permisos" y "Usuarios" (para que "Manual" aparezca en la
+lista de módulos restringibles).
