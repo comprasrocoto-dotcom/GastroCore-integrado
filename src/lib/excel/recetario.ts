@@ -33,6 +33,7 @@ type LineaIngrediente = {
 };
 
 const AZUL = "FF1E3A5F"; // mismo azul de marca (#1E3A5F) que el resto de la app, en ARGB para exceljs
+const AMBAR = "FFF59E0B"; // mismo ámbar de "--warning" que ya usa la app, para distinguir subrecetas de recetas (como en el Excel viejo)
 const BLANCO = "FFFFFFFF";
 const GRIS_SUBTITULO = "FF64748B";
 const GRIS_GENERADO = "FF94A3B8";
@@ -76,10 +77,10 @@ function textoMerma(mermaPct: number): string {
   return `${Math.round(mermaPct * 100)}%`;
 }
 
-function estilizarTitulo(sh: ExcelJS.Worksheet, fila: ExcelJS.Row, ultimaColumna: number) {
+function estilizarTitulo(sh: ExcelJS.Worksheet, fila: ExcelJS.Row, ultimaColumna: number, colorFondo: string) {
   fila.eachCell({ includeEmpty: true }, (celda) => {
     celda.font = { bold: true, size: 12, color: { argb: BLANCO } };
-    celda.fill = { type: "pattern", pattern: "solid", fgColor: { argb: AZUL } };
+    celda.fill = { type: "pattern", pattern: "solid", fgColor: { argb: colorFondo } };
   });
   sh.mergeCells(fila.number, 1, fila.number, ultimaColumna);
   fila.height = 22;
@@ -99,7 +100,9 @@ function estilizarEncabezadoColumnas(fila: ExcelJS.Row) {
 }
 
 /** Arma una hoja de bloques (una por receta o por subreceta): cada bloque
- * tiene un título con fondo azul, una línea de resumen gris chica, el
+ * tiene un título con fondo de color (azul para recetas, ámbar para
+ * subrecetas — igual que el Excel viejo, que también distingue el color
+ * según el tipo de bloque), una línea de resumen gris chica, el
  * encabezado de columnas de sus ingredientes, las filas de ingredientes
  * (con cebreado que arranca de nuevo en cada bloque) y dos filas en blanco
  * antes del próximo bloque. Columna A queda vacía como sangría — así es
@@ -108,7 +111,8 @@ function armarHojaBloques(
   wb: ExcelJS.Workbook,
   nombreHoja: string,
   bloques: { titulo: string; subtitulo: string; ingredientes: LineaIngrediente[] }[],
-  unidadesPorCodigo: Record<string, string>
+  unidadesPorCodigo: Record<string, string>,
+  colorTitulo: string
 ) {
   const sh = wb.addWorksheet(nombreHoja, {
     views: [{ showGridLines: false }],
@@ -126,7 +130,7 @@ function armarHojaBloques(
 
   bloques.forEach((bloque) => {
     const filaTitulo = sh.addRow([bloque.titulo]);
-    estilizarTitulo(sh, filaTitulo, 8);
+    estilizarTitulo(sh, filaTitulo, 8, colorTitulo);
 
     const filaSubtitulo = sh.addRow([bloque.subtitulo]);
     estilizarSubtitulo(sh, filaSubtitulo, 8);
@@ -249,7 +253,7 @@ export async function generarExcelRecetario(datos: {
       ingredientes: ingredientesPorReceta.get(r.nombre) ?? [],
     };
   });
-  armarHojaBloques(wb, "Recetas", bloquesRecetas, unidadesPorCodigo);
+  armarHojaBloques(wb, "Recetas", bloquesRecetas, unidadesPorCodigo, AZUL);
 
   // --- Hoja "Subrecetas" ---
   const ingredientesPorSubreceta = new Map<string, LineaIngrediente[]>();
@@ -274,7 +278,7 @@ export async function generarExcelRecetario(datos: {
       ingredientes: ingredientesPorSubreceta.get(s.nombre) ?? [],
     };
   });
-  armarHojaBloques(wb, "Subrecetas", bloquesSubrecetas, unidadesPorCodigo);
+  armarHojaBloques(wb, "Subrecetas", bloquesSubrecetas, unidadesPorCodigo, AMBAR);
 
   const buffer = await wb.xlsx.writeBuffer();
   return Buffer.from(buffer);
