@@ -2019,3 +2019,24 @@ Archivos nuevos/tocados: `src/app/(protegido)/manual/page.tsx` (nuevo),
 (entrada nueva en el menú), `src/lib/auth/modulos.ts`, y las pantallas
 de "Roles y permisos" y "Usuarios" (para que "Manual" aparezca en la
 lista de módulos restringibles).
+
+## Color distinto para Subrecetas en el Excel del recetario (23/11)
+
+Mariluz mandó dos capturas comparando el Excel viejo con el nuevo y pidió
+calcar "ese mismo diseño" conservando los colores que ya se usan. La
+diferencia real entre las dos capturas era el color del título de cada
+bloque: en el sistema viejo las recetas y las subrecetas tenían colores
+distintos, y en la primera versión del Excel nuevo las dos hojas salían
+con el mismo azul. Se confirmó con Mariluz (opción "Sí, separar colores
+por tipo") que lo que hacía falta era volver a distinguirlas por color,
+sin necesidad de calcar el tono exacto del sistema viejo.
+
+Ahora, en la hoja "Recetas" el título de cada bloque sigue en azul (el
+mismo azul de marca de siempre), y en la hoja "Subrecetas" el título de
+cada bloque pasó a un color ámbar — el mismo ámbar que ya usa el resto
+de Gastro Central para las alertas de "atención" (`--warning` en los
+estilos de la app), para no inventar un color nuevo y mantener todo
+dentro de la misma paleta. El resto del diseño del bloque (resumen,
+encabezado de columnas, ingredientes con cebreado) no cambió.
+
+Archivo tocado: `src/lib/excel/recetario.ts`.
