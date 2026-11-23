@@ -15,6 +15,7 @@ import {
   IconoRecetario,
   IconoMarcas,
   IconoUsuarios,
+  IconoManual,
   IconoSalir,
 } from "@/components/IconosNav";
 import { logout } from "@/app/login/actions";
@@ -35,12 +36,15 @@ import { logout } from "@/app/login/actions";
  * Orden y módulos calcados del GastroCore real (ver capturas de
  * referencia de Mariluz, 19/09): Insumos, Subrecetas, Recetas, Familias,
  * Panel, Análisis, Usuarios, Manual, Configuración. Configuración ya se
- * construyó (21/09) y se agregó acá; Panel, Análisis y Manual todavía no
- * existen como pantallas en Gastro Central — se agregan recién cuando
- * cada uno esté construido, para no dejar links rotos. "Recetario" (solo
- * preparación/emplatado, sin costos) es una pantalla propia de Gastro
- * Central que no existe en el GastroCore real — se deja al final,
- * después de los módulos que sí tienen equivalente.
+ * construyó (21/09) y se agregó acá; Panel y Análisis todavía no existen
+ * como pantallas en Gastro Central — se agregan recién cuando cada uno
+ * esté construido, para no dejar links rotos. "Manual" (23/11) ya tiene
+ * su pantalla (`/manual`), así que se agregó acá, al final — antes de
+ * "Recetario" porque en el GastroCore real iba justo antes de
+ * Configuración. "Recetario" (solo preparación/emplatado, sin costos) es
+ * una pantalla propia de Gastro Central que no existe en el GastroCore
+ * real — se deja al final de todo, después de los módulos que sí tienen
+ * equivalente.
  *
  * "Marcas" y "Usuarios" (20/10) son pantallas nuevas, reservadas al
  * Admin multi-marca — no están en este array fijo porque solo deben
@@ -58,6 +62,7 @@ const NAV = [
   { href: "/recetas", label: "Recetas", Icono: IconoRecetas },
   { href: "/familias", label: "Familias", Icono: IconoFamilias },
   { href: "/configuracion", label: "Configuración", Icono: IconoConfiguracion },
+  { href: "/manual", label: "Manual", Icono: IconoManual },
   { href: "/recetario", label: "Recetario", Icono: IconoRecetario },
 ];
 
