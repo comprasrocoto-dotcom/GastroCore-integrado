@@ -14,6 +14,7 @@ export const MODULOS_DISPONIBLES = [
   "recetas",
   "familias",
   "configuracion",
+  "manual",
   "recetario",
 ] as const;
 export type Modulo = (typeof MODULOS_DISPONIBLES)[number];
