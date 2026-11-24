@@ -2040,6 +2040,7 @@ dentro de la misma paleta. El resto del diseño del bloque (resumen,
 encabezado de columnas, ingredientes con cebreado) no cambió.
 
 Archivo tocado: `src/lib/excel/recetario.ts`.
+
 ## Descarga en Excel, filtros y nuevas acciones en Insumos (23/11)
 
 Mariluz mandó dos capturas comparando el módulo de Insumos actual contra
