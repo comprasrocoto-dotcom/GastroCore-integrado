@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getUsuarioActual } from "@/lib/auth/usuario-actual";
 import {
   crearSubrecetaConIngredientes,
   actualizarSubrecetaConIngredientes,
@@ -178,4 +179,54 @@ export async function guardarFichaSubreceta(formData: FormData) {
 
   await registrarHistorialSubreceta(subrecetaId, "ficha_tecnica");
   revalidatePath(`/subrecetas/${subrecetaId}`);
+}
+
+/**
+ * Actualiza el costo del insumo "SUB." maestro para que coincida con el
+ * costo recién calculado de la subreceta — botón "Actualizar el costo del
+ * insumo según lo calculado" de la vista de detalle (24/11, a pedido de
+ * Mariluz, mismo comportamiento que tenía GastroCore: cuando el costo de
+ * los ingredientes cambia, el insumo "SUB." que representa a la subreceta
+ * se queda desactualizado hasta que alguien aprieta este botón). Como el
+ * costo del insumo se usa en vivo en todas las recetas que lo llevan, esas
+ * recetas quedan recosteadas automáticamente al guardarse. Deja registro en
+ * `precios_historicos`, igual que una edición manual del costo desde
+ * Insumos (ver `actualizarInsumo` en insumos/actions.ts).
+ */
+export async function actualizarCostoInsumoSegunSubreceta(formData: FormData) {
+  const subrecetaId = String(formData.get("subreceta_id") ?? "");
+  const insumoId = String(formData.get("insumo_id") ?? "");
+  const sedeId = String(formData.get("sede_id") ?? "");
+  const nuevoCoste = Number(formData.get("nuevo_coste") ?? NaN);
+  if (!subrecetaId || !insumoId || !sedeId || !Number.isFinite(nuevoCoste)) return;
+
+  const supabase = createClient();
+  const usuario = await getUsuarioActual();
+
+  const { data: insumoActual } = await supabase
+    .from("insumos")
+    .select("coste")
+    .eq("id", insumoId)
+    .single();
+  const costeAnterior = insumoActual ? Number(insumoActual.coste) : null;
+
+  const { error } = await supabase.from("insumos").update({ coste: nuevoCoste }).eq("id", insumoId);
+  if (error) return;
+
+  if (costeAnterior !== null && costeAnterior !== nuevoCoste) {
+    await supabase.from("precios_historicos").insert({
+      sede_id: sedeId,
+      insumo_id: insumoId,
+      coste: nuevoCoste,
+      coste_anterior: costeAnterior,
+      diferencia: nuevoCoste - costeAnterior,
+      motivo: "Actualizado desde Subrecetas según el costo calculado",
+      usuario_id: usuario?.id ?? null,
+    });
+  }
+
+  revalidatePath(`/subrecetas/${subrecetaId}`);
+  revalidatePath("/subrecetas");
+  revalidatePath("/insumos");
+  revalidatePath(`/insumos/${insumoId}`);
 }
