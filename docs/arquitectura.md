@@ -2091,3 +2091,47 @@ Archivos tocados: `src/lib/data/insumos.ts`,
 `src/app/(protegido)/insumos/[id]/page.tsx`,
 `src/app/(protegido)/subrecetas/nueva/page.tsx`,
 `src/app/(protegido)/subrecetas/SubrecetaForm.tsx`.
+
+## Tarjeta "Maestro en Insumos" en el detalle de Subrecetas (24/11)
+
+Mariluz mandó cuatro capturas comparando el diseño de Subrecetas (la
+pantalla de ver una subreceta, y el listado) contra el GastroCore viejo,
+marcando en rojo lo que quería replicar. Antes de programar se auditó
+pantalla por pantalla:
+
+- **El listado de Subrecetas** ya tenía la misma estructura que el
+  sistema viejo — tarjetas de resumen arriba, buscador, y la columna
+  "Insumos vs subreceta" que ya avisaba con un "≠" cuando el costo del
+  insumo "SUB." quedaba desactualizado respecto al costo recién calculado.
+  No hizo falta tocar nada acá.
+- **La pantalla de ver una subreceta** sí tenía una diferencia real: le
+  faltaba la tarjeta "Maestro en Insumos" que mostraba el sistema viejo,
+  con el costo actual del insumo y un botón para corregirlo cuando se
+  desactualiza.
+
+De la auditoría salieron dos decisiones de negocio que se confirmaron con
+Mariluz antes de programar (ambas con la opción recomendada):
+
+- El botón "Actualizar el costo del insumo según lo calculado" corrige de
+  verdad el costo del insumo "SUB." en Insumos (no es solo un aviso
+  visual) — y como ese costo se usa en vivo en todas las recetas que lo
+  llevan, esas recetas quedan recosteadas automáticamente apenas se
+  aprieta el botón. Por eso pide confirmación antes de aplicar.
+- En la pantalla de detalle, la tarjeta nueva se agregó arriba de todo
+  (antes de Costo total/Costo unitario), sin sacar ni tocar lo que ya
+  tenía esa pantalla y que el sistema viejo no ofrecía: Ficha técnica,
+  Subir foto, Descargar PDF e Historial de versiones.
+
+**Tarjeta "Maestro en Insumos".** Muestra el insumo "SUB." vinculado, su
+referencia y su costo actual en Insumos. Si ese costo difiere del costo
+recién calculado de la subreceta (mismo umbral que ya usaba el listado
+para el "≠"), aparece el aviso "La calculadora dice..." junto al botón
+"Actualizar el costo del insumo según lo calculado"; si coincide, un
+check verde confirma que está al día. Actualizar deja registro en el
+historial de precios del insumo, igual que una edición manual desde
+Insumos.
+
+Archivos nuevos: `src/app/(protegido)/subrecetas/BotonActualizarCostoInsumo.tsx`.
+Archivos tocados: `src/lib/data/subrecetas.ts`,
+`src/app/(protegido)/subrecetas/actions.ts`,
+`src/app/(protegido)/subrecetas/[id]/page.tsx`.
