@@ -236,7 +236,7 @@ export async function obtenerSubreceta(id: string) {
   const { data, error } = await supabase
     .from("subrecetas")
     .select(
-      "id, sede_id, nombre, rendimiento, unidad_rendimiento_codigo, merma_pct, desvio_pct, costo_total, costo_unitario, activo, insumo_id, foto_url, creado_en, actualizado_en, sedes(nombre), insumos(subfamilia_id)"
+      "id, sede_id, nombre, rendimiento, unidad_rendimiento_codigo, merma_pct, desvio_pct, costo_total, costo_unitario, activo, insumo_id, foto_url, creado_en, actualizado_en, sedes(nombre), insumos(referencia, coste, subfamilia_id)"
     )
     .eq("id", id)
     .single();
@@ -244,8 +244,13 @@ export async function obtenerSubreceta(id: string) {
   if (error || !data) return null;
   const { sedes, insumos, ...resto } = data as typeof data & {
     sedes: { nombre: string } | null;
-    insumos: { subfamilia_id: string | null } | null;
+    insumos: { referencia: string | null; coste: number; subfamilia_id: string | null } | null;
   };
+  const insumoVinculado = insumos as unknown as {
+    referencia: string | null;
+    coste: number;
+    subfamilia_id: string | null;
+  } | null;
   return {
     ...resto,
     /** Nombre de la sede — se usa en el encabezado del PDF, igual que
@@ -255,7 +260,13 @@ export async function obtenerSubreceta(id: string) {
      * precargar el selector de "Clasificación" en modo edición (ver
      * SubrecetaForm). El maestro no tiene por qué estar vinculado, así que
      * puede venir `null`. */
-    subfamilia_id: (insumos as unknown as { subfamilia_id: string | null } | null)?.subfamilia_id ?? null,
+    subfamilia_id: insumoVinculado?.subfamilia_id ?? null,
+    /** Referencia y costo actual del insumo "SUB." maestro — se usan en la
+     * tarjeta "Maestro en Insumos" de la vista de detalle (24/11, pedido de
+     * Mariluz) para comparar contra el costo recién calculado de la
+     * subreceta, igual que ya hacía GastroCore. */
+    insumo_referencia: insumoVinculado?.referencia ?? null,
+    insumo_coste: insumoVinculado ? Number(insumoVinculado.coste) : null,
     rendimiento: data.rendimiento === null ? null : Number(data.rendimiento),
     merma_pct: Number(data.merma_pct),
     desvio_pct: Number(data.desvio_pct),
