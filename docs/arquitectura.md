@@ -2040,3 +2040,53 @@ dentro de la misma paleta. El resto del diseño del bloque (resumen,
 encabezado de columnas, ingredientes con cebreado) no cambió.
 
 Archivo tocado: `src/lib/excel/recetario.ts`.
+## Descarga en Excel, filtros y nuevas acciones en Insumos (23/11)
+
+Mariluz mandó dos capturas comparando el módulo de Insumos actual contra
+el del GastroCore viejo y pidió tres cosas: poder descargar el listado de
+insumos, poder filtrar por familia (ej. "ver solo Licores"), y acomodar
+la pantalla más parecida a la del sistema viejo. De ahí salieron tres
+decisiones de negocio que se confirmaron con ella antes de programar
+(las tres con respuesta "sí"):
+
+- Agregar también el filtro "Centro de costo" del sistema viejo, aunque
+  todavía no todas las sedes tienen ese dato cargado.
+- Agregar un botón "Donde se usa" para ver en qué recetas y subrecetas
+  aparece cada insumo.
+- Armar una forma rápida de convertir los 1331 insumos viejos con
+  prefijo "SUB." (preparaciones que en el sistema anterior vivían mal
+  cargadas como si fueran insumos simples) en subrecetas reales.
+
+**Descargar Excel.** Nuevo botón "Descargar Excel" arriba del listado,
+que respeta la búsqueda y los filtros activos en pantalla. El archivo
+trae Referencia, Artículo, Subartículo, Subfamilia, Centro de costo,
+Unidad, % Merma, Costo y Activo — mismo estilo visual que los demás
+Excel de Gastro Central.
+
+**Filtros.** Dos dropdowns nuevos junto al buscador: "Subfamilia" (lo
+que en la práctica cumple el pedido de "filtrar por familia" — todos los
+insumos de una sede comparten una única familia, "INSUMOS", así que el
+filtro útil es por subfamilia, ej. Licores, Fruver) y "Centro de costo"
+(este último solo aparece si la sede tiene al menos un centro de costo
+cargado, para no mostrar un filtro vacío).
+
+**Nuevas columnas y acciones en la tabla.** Se agregaron las columnas
+"Referencia" y "% Merma" (ya existían en la base de datos, solo no se
+mostraban). En Acciones, cada fila ahora tiene "Donde se usa" (lleva a
+una sección nueva en la pantalla de editar insumo, con el listado de
+recetas y subrecetas donde aparece ese insumo) y, solo para los 1331
+insumos "SUB." todavía sueltos, un botón "Crear subreceta" que abre el
+formulario de Nueva subreceta ya con ese insumo enlazado — se reutiliza
+el mismo mecanismo de "enlazar un insumo SUB. existente" que ya tenía
+ese formulario, no se inventó nada nuevo: el botón solo ahorra buscarlo
+a mano.
+
+Archivos nuevos: `src/lib/excel/insumos.ts`,
+`src/app/(protegido)/insumos/exportar/descargar/route.ts`,
+`src/app/(protegido)/insumos/FiltrosInsumos.tsx`.
+Archivos tocados: `src/lib/data/insumos.ts`,
+`src/app/(protegido)/insumos/page.tsx`,
+`src/app/(protegido)/insumos/InsumosTabla.tsx`,
+`src/app/(protegido)/insumos/[id]/page.tsx`,
+`src/app/(protegido)/subrecetas/nueva/page.tsx`,
+`src/app/(protegido)/subrecetas/SubrecetaForm.tsx`.
