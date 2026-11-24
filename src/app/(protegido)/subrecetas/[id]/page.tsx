@@ -6,7 +6,12 @@ import { listarIngredientesDeSubreceta } from "@/lib/data/ingredientes";
 import { obtenerFichaPorSubreceta } from "@/lib/data/fichas-subrecetas";
 import { listarHistorialSubreceta } from "@/lib/data/historial-subrecetas";
 import SubidaFoto from "@/components/SubidaFoto";
-import { actualizarFotoSubreceta, guardarFichaSubreceta } from "../actions";
+import BotonActualizarCostoInsumo from "../BotonActualizarCostoInsumo";
+import {
+  actualizarFotoSubreceta,
+  actualizarCostoInsumoSegunSubreceta,
+  guardarFichaSubreceta,
+} from "../actions";
 
 // Misma razón que recetas/[id]/page.tsx: esta pantalla se abre siempre
 // justo después de crear/editar la subreceta (redirect desde el
@@ -51,6 +56,11 @@ export default async function SubrecetaDetallePage({
     await actualizarFotoSubreceta(subrecetaId, url);
   }
 
+  // Mismo umbral que usa el listado de Subrecetas para marcar la "≠" entre
+  // el costo del insumo "SUB." y el costo recién calculado.
+  const hayDeriva =
+    subreceta.insumo_coste !== null && Math.abs(subreceta.insumo_coste - subreceta.costo_unitario) >= 0.5;
+
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -93,6 +103,69 @@ export default async function SubrecetaDetallePage({
           </a>
         </div>
       </div>
+
+      {subreceta.insumo_id && (
+        <div className="card p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <span className="text-lg">🔗</span>
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500">
+                  Maestro en Insumos
+                </p>
+                <p className="mt-0.5 text-sm font-medium">
+                  {subreceta.nombre}{" "}
+                  {subreceta.insumo_referencia && (
+                    <span className="ml-1 rounded bg-slate-100 px-1.5 py-px font-mono text-[10px] text-slate-500">
+                      {subreceta.insumo_referencia}
+                    </span>
+                  )}
+                </p>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="fin-value text-lg font-semibold">
+                {subreceta.insumo_coste !== null ? money(subreceta.insumo_coste) : "—"}
+              </p>
+              <p className="text-[11px]" style={{ color: "var(--muted)" }}>
+                costo actual en Insumos
+              </p>
+            </div>
+          </div>
+
+          {hayDeriva ? (
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50/60 px-3 py-2">
+              <p className="text-xs text-amber-800">
+                La calculadora dice{" "}
+                <strong>
+                  {subreceta.costo_unitario.toFixed(4)}
+                  {subreceta.unidad_rendimiento_codigo ? ` / ${subreceta.unidad_rendimiento_codigo}` : ""}
+                </strong>{" "}
+                — distinto al costo actual en Insumos.
+              </p>
+              <BotonActualizarCostoInsumo
+                subrecetaId={subreceta.id}
+                insumoId={subreceta.insumo_id}
+                sedeId={subreceta.sede_id}
+                nuevoCoste={subreceta.costo_unitario}
+                accion={actualizarCostoInsumoSegunSubreceta}
+              />
+            </div>
+          ) : (
+            subreceta.insumo_coste !== null && (
+              <p className="mt-3 text-[11px] text-emerald-700">
+                ✓ El costo en Insumos ya coincide con lo calculado.
+              </p>
+            )
+          )}
+
+          <p className="mt-2 text-[11px] text-slate-400">
+            Actualizar acá cambia el costo del insumo en Insumos — como ese costo se usa en vivo en las
+            recetas que lo llevan, también actualiza el costo de esas recetas. Queda registrado en el
+            historial de precios del insumo.
+          </p>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div className="card p-4">
