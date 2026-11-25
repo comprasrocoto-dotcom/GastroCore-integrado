@@ -30,7 +30,7 @@ async function requireMaestro() {
 function generarSlug(nombre: string): string {
   const base = nombre
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "") // saca tildes/acentos
+    .replace(/[̀-ͯ]/g, "") // saca tildes/acentos
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
@@ -52,6 +52,10 @@ export async function crearMarca(formData: FormData) {
     const { error } = await supabase.from("marcas").insert({ nombre, slug });
     if (!error) {
       revalidatePath("/marcas");
+      // El nombre de una marca se usa en todo el sistema (Usuarios,
+      // Insumos, Recetas, etc.) — hay que avisarle a todas esas pantallas,
+      // no solo a Marcas, si no se quedan mostrando el dato viejo.
+      revalidatePath("/", "layout");
       return;
     }
     if (error.code !== "23505") {
@@ -86,8 +90,11 @@ export async function actualizarMarca(formData: FormData) {
     .eq("id", id);
 
   revalidatePath("/marcas");
+  // Igual que al crear: el nombre/estado de la marca se lee en muchas
+  // otras pantallas (Usuarios, Insumos, Recetas...), así que hay que
+  // refrescarlas todas, no solo Marcas.
+  revalidatePath("/", "layout");
 }
-
 /**
  * Eliminar de verdad (20/10, a pedido explícito de Mariluz): borra la
  * fila para siempre, a diferencia de "Desactivar" que siempre se puede
@@ -133,6 +140,7 @@ export async function eliminarMarca(formData: FormData) {
   }
 
   await supabase.from("marcas").delete().eq("id", id);
+  revalidatePath("/", "layout");
   redirect("/marcas");
 }
 
@@ -153,6 +161,7 @@ export async function crearSede(formData: FormData) {
     const { error } = await supabase.from("sedes").insert({ marca_id: marcaId, nombre, slug });
     if (!error) {
       revalidatePath("/marcas");
+      revalidatePath("/", "layout");
       return;
     }
     if (error.code !== "23505") {
@@ -165,7 +174,6 @@ export async function crearSede(formData: FormData) {
     `/marcas?error=${encodeURIComponent(`No se pudo crear la sede "${nombre}": no se encontró un identificador libre.`)}`
   );
 }
-
 export async function actualizarSede(formData: FormData) {
   await requireMaestro();
   const id = String(formData.get("id") ?? "");
@@ -179,6 +187,7 @@ export async function actualizarSede(formData: FormData) {
     .eq("id", id);
 
   revalidatePath("/marcas");
+  revalidatePath("/", "layout");
 }
 
 /**
@@ -231,5 +240,6 @@ export async function eliminarSede(formData: FormData) {
   }
 
   await supabase.from("sedes").delete().eq("id", id);
+  revalidatePath("/", "layout");
   redirect("/marcas");
 }
