@@ -2135,3 +2135,33 @@ Archivos nuevos: `src/app/(protegido)/subrecetas/BotonActualizarCostoInsumo.tsx`
 Archivos tocados: `src/lib/data/subrecetas.ts`,
 `src/app/(protegido)/subrecetas/actions.ts`,
 `src/app/(protegido)/subrecetas/[id]/page.tsx`.
+
+## "123 Wok" en vez de "San Agustin" en Usuarios (25/11)
+
+Mariluz avisó que en la pantalla de Usuarios (Crear/Editar), en la lista de
+sedes para elegir, en vez de ver el grupo "San Agustin" veía "123 Wok".
+
+**La causa.** Esa marca se llamó "123 Wok" hace tiempo (de ahí el nombre
+real de la sede con más de 1.500 insumos que ya se menciona varias veces en
+el código) y en algún momento se le cambió el nombre a "San Agustin" desde
+la pantalla de Marcas. El problema: ese cambio solo le avisaba a la propia
+pantalla de Marcas que los datos habían cambiado — nunca le avisaba a las
+demás pantallas del sistema (Usuarios, Insumos, Recetas, Familias,
+Configuración, Panel...), que seguían usando la copia vieja que tenían
+guardada. Por eso Mariluz seguía viendo el nombre viejo ahí, y un simple
+F5 no lo arreglaba (el dato viejo quedaba guardado del lado del servidor,
+no en su navegador).
+
+**La solución.** Las seis acciones de Marcas y Sedes (crear, editar y
+eliminar marca; crear, editar y eliminar sede) ahora avisan a *todas* las
+pantallas del sistema cuando algo cambia, no solo a Marcas. Así, cualquier
+cambio de nombre o de estado de una marca/sede se ve reflejado al toque en
+cualquier pantalla que lo use.
+
+De paso se corrigió un dato suelto en la base: por dentro, cada marca tiene
+un identificador interno ("slug") que no se ve en ninguna pantalla — el de
+San Agustin todavía decía "123-wok" por el cambio de nombre viejo. Se
+corrigió a "san-agustin", igual que las demás marcas, solo por prolijidad
+(no afectaba nada visible).
+
+Archivo tocado: `src/app/(protegido)/marcas/actions.ts`.
